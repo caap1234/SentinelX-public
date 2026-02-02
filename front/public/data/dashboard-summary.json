@@ -1,0 +1,26 @@
+[
+  {
+    "key": "critical_threats",
+    "label": "Amenazas detectadas",
+    "value": 128,
+    "helper": "Críticas y altas"
+  },
+  {
+    "key": "events_analyzed",
+    "label": "Eventos analizados",
+    "value": 2341,
+    "helper": "Este mes"
+  },
+  {
+    "key": "logs_sources",
+    "label": "Logs procesados",
+    "value": 37,
+    "helper": "Fuentes de log activas"
+  },
+  {
+    "key": "suspicious_ips",
+    "label": "IPs sospechosas",
+    "value": 54,
+    "helper": "Monitoreadas en todos los servidores"
+  }
+]

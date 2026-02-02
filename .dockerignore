@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
+ruff_cache/
+.venv/
+.env
+.DS_Store
+
+# Si quieres excluir cosas no necesarias
+app/debug/
+alembic/versions/*.pyc
+
+# logs
+*.log
+
+# no metas la base geoip al build si la vas a montar
+geoip/
+backups/

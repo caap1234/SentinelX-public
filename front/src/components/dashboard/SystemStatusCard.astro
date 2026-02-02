@@ -1,0 +1,146 @@
+---
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000"
+---
+
+
+<div class="rounded-xl bg-white border border-[#E5E7EB] p-6 shadow-sm flex flex-col">
+  <!-- TÍTULO -->
+  <div class="text-center mb-2">
+    <h2 class="text-sm font-semibold text-[#111827]">
+      Estado del sistema
+    </h2>
+    <p class="text-xs text-[#6B7280] mt-1">
+      Componentes clave del motor de SentinelX (ingesta, correlación, alertas).
+    </p>
+  </div>
+
+  <!-- GRID -->
+  <div class="w-full mt-4">
+    <!-- Encabezados -->
+    <div class="grid grid-cols-4 pb-3 border-b border-[#E5E7EB] text-xs font-medium text-[#6B7280]">
+      <div class="text-left pl-1">Componente</div>
+      <div class="text-center">Estado</div>
+      <div class="text-left">Detalle</div>
+      <div class="text-center">Indicador</div>
+    </div>
+
+    <!-- Filas dinámicas -->
+    <div class="text-xs divide-y divide-[#F3F4F6]" data-system-status>
+      <!-- Inyectado desde JSON -->
+    </div>
+  </div>
+
+  <script type="module" define:vars={{ API_BASE }}>
+    const container = document.querySelector("[data-system-status]");
+
+    // @ts-ignore
+    const TOKEN = window.SENTINELX_TOKEN || null;
+
+    /**
+     * @param {{component:string; status:string; detail?:string; status_code?:"ok"|"warning"|"error"|"unknown";}[]} items
+     */
+    function renderStatus(items) {
+      if (!container) return;
+      container.innerHTML = "";
+
+      const COLOR_MAP = {
+        ok: "#22C55E", // verde
+        warning: "#F59E0B", // amarillo
+        error: "#DC2626", // rojo
+        unknown: "#9CA3AF", // gris
+      };
+
+      if (!Array.isArray(items) || items.length === 0) {
+        const row = document.createElement("div");
+        row.className = "py-3 text-center text-[11px] text-[#9CA3AF]";
+        row.textContent = "Sin información de estado disponible.";
+        container.append(row);
+        return;
+      }
+
+      items.forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "grid grid-cols-4 py-3 items-center";
+
+        const comp = document.createElement("div");
+        comp.className = "pl-1 text-[#111827] font-medium";
+        comp.textContent = item.component;
+
+        const status = document.createElement("div");
+        status.className = "text-center text-[#4B5563]";
+        status.textContent = item.status;
+
+        const detail = document.createElement("div");
+        detail.className = "text-left text-[#6B7280]";
+        detail.textContent = item.detail || "—";
+
+        const indicatorBox = document.createElement("div");
+        indicatorBox.className = "flex justify-center";
+
+        const pill = document.createElement("div");
+        pill.className =
+          "inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#F9FAFB] border border-[#E5E7EB]";
+
+        const dot = document.createElement("span");
+        dot.className = "h-2.5 w-2.5 rounded-full";
+
+        const code = item.status_code || "unknown";
+        dot.style.backgroundColor =
+          COLOR_MAP[code] || COLOR_MAP.unknown;
+
+        const label = document.createElement("span");
+        label.className = "text-[10px] text-[#4B5563]";
+        label.textContent =
+          code === "ok"
+            ? "Estable"
+            : code === "warning"
+            ? "Atención"
+            : code === "error"
+            ? "Crítico"
+            : "Sin datos";
+
+        pill.append(dot, label);
+        indicatorBox.append(pill);
+
+        row.append(comp, status, detail, indicatorBox);
+        container.append(row);
+      });
+    }
+
+    async function loadSystemStatus() {
+      if (!container) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/dashboard/system-status`, {
+          headers: TOKEN
+            ? {
+                Authorization: `Bearer ${TOKEN}`,
+                Accept: "application/json",
+              }
+            : { Accept: "application/json" },
+        });
+
+        if (!res.ok) {
+          console.error(
+            "Error cargando /dashboard/system-status:",
+            await res.text()
+          );
+          renderStatus([]);
+          return;
+        }
+
+        const data = await res.json();
+        const items = Array.isArray(data)
+          ? data
+          : data.items || data.components || [];
+        renderStatus(items);
+      } catch (err) {
+        console.error("Error llamando /dashboard/system-status:", err);
+        renderStatus([]);
+      }
+    }
+
+    // carga única (no depende de filtros)
+    loadSystemStatus();
+  </script>
+</div>

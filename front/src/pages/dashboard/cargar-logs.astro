@@ -1,0 +1,662 @@
+---
+import DashboardLayout from "../../layouts/DashboardLayout.astro";
+import HeaderBar from "../../components/dashboard/HeaderBar.astro";
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000";
+---
+
+<DashboardLayout pageTitle="SentinelX SIEM – Cargar Logs">
+  <!-- Header sin filtros -->
+  <HeaderBar
+    title="Cargar Logs"
+    subtitle="Sube archivos de registro de tus servidores para analizarlos y generar información de seguridad."
+    showFilters={false}
+  />
+
+  <section class="flex-1 px-8 py-6 space-y-6">
+    <!-- Texto introductorio -->
+    <div class="max-w-xl text-xs text-[#6B7280]">
+      <p>
+        Sube archivos de registro de tus servidores para analizarlos y generar
+        eventos de seguridad. Selecciona el servidor, etiqueta los archivos
+        y luego procesa los logs.
+      </p>
+    </div>
+
+    <!-- Card principal: selección + dropzone -->
+    <div
+      class="rounded-xl bg-white border border-[#E5E7EB] px-8 py-6 shadow-sm flex flex-col gap-6"
+    >
+    <!-- Selects estilo compacto como en tu imagen -->
+    <div class="flex flex-col gap-6 max-w-xl w-full mx-auto">
+
+    <!-- Servidor (dropdown con búsqueda) -->
+    <div class="flex items-center gap-6">
+      <label class="text-sm font-medium text-[#111827] w-40">
+        Servidor
+      </label>
+
+      <div class="relative" data-server-select>
+        <!-- “select” real (oculto) para que tu JS actual siga funcionando -->
+        <select data-select-server class="hidden">
+          <option value="">Seleccionar servidor...</option>
+        </select>
+
+        <!-- Trigger -->
+        <button
+          type="button"
+          data-server-trigger
+          class="relative w-[260px] h-9 rounded-full border border-[#D1D5DB] bg-white
+                text-sm text-[#111827] px-4 pr-10 text-left
+                focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+        >
+          <span data-server-label class="truncate">Seleccionar servidor...</span>
+          <span class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[10px] text-black">
+            ▼
+          </span>
+        </button>
+
+        <!-- Menu -->
+        <div
+          data-server-menu
+          class="hidden absolute left-0 mt-2 w-[260px] rounded-lg bg-white border border-[#E5E7EB]
+                shadow-lg z-30 overflow-hidden"
+        >
+          <div class="p-2 border-b border-[#E5E7EB] bg-white">
+            <input
+              type="text"
+              data-server-search
+              placeholder="Buscar servidor..."
+              class="w-full h-8 rounded-md border border-[#D1D5DB] px-2 text-[11px]
+                    focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+            />
+          </div>
+
+          <div class="max-h-56 overflow-auto py-1" data-server-options>
+            <!-- Opciones dinámicas -->
+          </div>
+
+          <div class="hidden px-4 py-3 text-[11px] text-[#6B7280]" data-server-empty>
+            Sin resultados
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Etiquetas -->
+    <div class="flex items-center gap-6">
+        <label class="text-sm font-medium text-[#111827] w-40">
+        Etiquetas (opcional)
+        </label>
+
+        <div class="relative">
+        <select
+          data-select-tag
+          class="w-[260px] h-9 rounded-full border border-[#D1D5DB] bg-white
+                text-sm text-[#111827] px-4 pr-8 appearance-none
+                focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+        >
+          <option value="">Seleccionar etiqueta...</option>
+
+          <!-- Apache -->
+          <option value="access_log">access_log</option>
+          <option value="apache_error_log">apache_error_log</option>
+
+          <!-- Mail -->
+          <option value="exim_mainlog">exim_mainlog</option>
+          <option value="maillog">maillog</option>
+
+          <!-- Security -->
+          <option value="secure">secure</option>
+          <option value="lfd_log">lfd_log</option>
+          <option value="modsec">modsec</option>
+
+          <!-- cPanel -->
+          <option value="cpanel">cpanel (access_log)</option>
+
+          <!-- Performance -->
+          <option value="sar">sar</option>
+        </select>
+
+        <span class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[10px] text-black">
+            ▼
+        </span>
+        </div>
+    </div>
+    </div>
+      <!-- Dropzone -->
+      <div class="max-w-3xl mx-auto w-full">
+        <div
+          data-dropzone
+          class="relative rounded-xl border border-dashed border-[#D1D5DB]
+                 bg-[#F9FAFB] px-8 py-12 flex flex-col items-center justify-center
+                 text-center cursor-pointer transition-colors hover:bg-[#F3F4F6]"
+        >
+          <div class="mb-3">
+            <img
+                src="/svg/drop.svg"
+                alt="Subir archivo"
+                class="h-10 w-10 opacity-60"
+                loading="lazy"
+            />
+          </div>
+          <p class="text-sm text-[#4B5563]">
+            Arrastra tus archivos de log aquí
+          </p>
+          <p class="mt-1 text-[11px] text-[#9CA3AF]">
+            O haz clic para seleccionar archivos
+          </p>
+          <p class="mt-4 text-[10px] text-[#9CA3AF]">
+            Formatos soportados: .log, .txt, .json, .gz · Tamaño máximo: 50&nbsp;MB por archivo
+          </p>
+
+          <input
+            type="file"
+            multiple
+            data-file-input
+            class="absolute inset-0 opacity-0 cursor-pointer"
+          />
+        </div>
+
+        <!-- Tarjeta de archivos seleccionados -->
+        <div
+          data-file-preview
+          class="mt-6 hidden max-w-2xl mx-auto rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-5 py-4 shadow-sm flex-col gap-3"
+        >
+          <div
+            data-file-list
+            class="flex flex-col gap-2"
+          >
+            <!-- Filas de archivos se agregan desde JS -->
+          </div>
+
+          <div class="flex justify-center pt-2">
+            <button
+              type="button"
+              data-process-all
+              class="px-6 py-2 text-xs rounded-full bg-[#E67E22] text-black font-semibold
+                     hover:bg-[#D35400] transition-colors"
+            >
+              Procesar logs
+            </button>
+          </div>
+        </div>
+    <!-- Historial de cargas -->
+    <div
+      class="mt-8 rounded-xl bg-white border border-[#E5E7EB] px-8 py-5 shadow-sm"
+    >
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-[#111827]">
+          Historial de cargas
+        </h2>
+        <p class="text-[11px] text-[#9CA3AF]">
+          Últimas cargas realizadas en este panel.
+        </p>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-xs">
+          <thead>
+            <tr class="text-[#6B7280] border-b border-[#E5E7EB]">
+              <th class="py-2 px-3 text-left">Archivo</th>
+              <th class="py-2 px-3 text-left">Servidor</th>
+              <th class="py-2 px-3 text-left">Fecha</th>
+              <th class="py-2 px-3 text-left">Estado</th>
+            </tr>
+          </thead>
+          <tbody
+            class="text-[#4B5563]"
+            data-upload-history
+          >
+            <!-- Filas se añadirán desde JS -->
+          </tbody>
+        </table>
+        <div class="flex justify-center mt-3">
+          <button
+            type="button"
+            data-history-more
+            class="hidden text-[11px] text-[#111827] px-3 py-1 rounded-full border border-[#D1D5DB] bg-white hover:bg-[#F3F4F6] transition-colors"
+          >
+            Ver más
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<script type="module" define:vars={{ API_BASE }}>
+
+  const dropzone = document.querySelector("[data-dropzone]");
+  const fileInput = document.querySelector("[data-file-input]");
+  const preview = document.querySelector("[data-file-preview]");
+  const fileListEl = document.querySelector("[data-file-list]");
+  const processAllBtn = document.querySelector("[data-process-all]");
+  const historyBody = document.querySelector("[data-upload-history]");
+  const serverSelect = document.querySelector("[data-select-server]"); // select hidden
+  const tagSelect = document.querySelector("[data-select-tag]");
+  const verMasBtn = document.querySelector("[data-history-more]");
+
+  // =========================
+  // Servidor dropdown (custom) con búsqueda + JSON (/public/data/servers.json)
+  // Requiere el HTML con:
+  // [data-server-select], [data-server-trigger], [data-server-menu],
+  // [data-server-label], [data-server-search], [data-server-options], [data-server-empty]
+  // y un <select data-select-server class="hidden">...</select>
+  // =========================
+  const serverSelectHost = document.querySelector("[data-server-select]");
+  const serverTrigger = serverSelectHost?.querySelector("[data-server-trigger]");
+  const serverMenu = serverSelectHost?.querySelector("[data-server-menu]");
+  const serverLabel = serverSelectHost?.querySelector("[data-server-label]");
+  const serverSearch = serverSelectHost?.querySelector("[data-server-search]");
+  const serverOptionsEl = serverSelectHost?.querySelector("[data-server-options]");
+  const serverEmptyEl = serverSelectHost?.querySelector("[data-server-empty]");
+
+  /** @type {{id: string, label?: string}[]} */
+  let SERVER_LIST = [];
+
+  const closeServerMenu = () => serverMenu?.classList.add("hidden");
+  const toggleServerMenu = () => serverMenu?.classList.toggle("hidden");
+
+  const renderServerOptions = (query = "") => {
+    if (!serverOptionsEl) return;
+
+    const q = query.trim().toLowerCase();
+    serverOptionsEl.innerHTML = "";
+
+    const filtered = SERVER_LIST.filter((s) =>
+      (s.label || s.id).toLowerCase().includes(q)
+    );
+
+    if (serverEmptyEl) serverEmptyEl.classList.toggle("hidden", filtered.length !== 0);
+
+    filtered.forEach((s) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB] text-xs text-[#4B5563]";
+      btn.dataset.value = s.id;
+      btn.textContent = s.label || s.id;
+
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+
+        // Label visible
+        if (serverLabel) serverLabel.textContent = s.label || s.id;
+
+        // Select hidden (para que tu código existente siga funcionando)
+        if (serverSelect instanceof HTMLSelectElement) {
+          serverSelect.value = s.id;
+        }
+
+        // Limpia búsqueda y cierra
+        if (serverSearch instanceof HTMLInputElement) serverSearch.value = "";
+        renderServerOptions("");
+        closeServerMenu();
+      });
+
+      serverOptionsEl.appendChild(btn);
+    });
+  };
+
+  const loadServersForUpload = async () => {
+    try {
+      const res = await fetch("/data/servers.json", { cache: "no-store" });
+      if (!res.ok) {
+        const txt = await res.text();
+        console.error("Error subiendo archivo:", file.name, res.status, txt);
+      }
+
+      const data = await res.json();
+
+      SERVER_LIST = Array.isArray(data)
+        ? data.map((x) => {
+            if (typeof x === "string") return { id: x, label: x };
+            return { id: x.id, label: x.label || x.id };
+          })
+        : [];
+
+      // Rellenar el <select hidden> por compatibilidad
+      if (serverSelect instanceof HTMLSelectElement) {
+        serverSelect.innerHTML = `<option value="">Seleccionar servidor...</option>`;
+        SERVER_LIST.forEach((s) => {
+          const opt = document.createElement("option");
+          opt.value = s.id;
+          opt.textContent = s.label || s.id;
+          serverSelect.appendChild(opt);
+        });
+      }
+
+      renderServerOptions("");
+    } catch (err) {
+      console.error("No se pudo cargar /data/servers.json", err);
+    }
+  };
+
+  serverTrigger?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleServerMenu();
+
+    const isOpen = serverMenu && !serverMenu.classList.contains("hidden");
+    if (isOpen) {
+      setTimeout(() => {
+        if (serverSearch instanceof HTMLInputElement) {
+          serverSearch.focus();
+          serverSearch.select();
+        }
+      }, 0);
+    }
+  });
+
+  serverSearch?.addEventListener("click", (e) => e.stopPropagation());
+  serverSearch?.addEventListener("mousedown", (e) => e.stopPropagation());
+  serverSearch?.addEventListener("input", () => {
+    if (serverSearch instanceof HTMLInputElement) {
+      renderServerOptions(serverSearch.value);
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    const t = e.target;
+    if (!(t instanceof HTMLElement)) return;
+    if (!t.closest("[data-server-select]")) closeServerMenu();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeServerMenu();
+  });
+
+  // =========================
+  // Archivos: store real Files
+  // =========================
+  /** @type {Map<string, File>} */
+  const selectedFiles = new Map();
+  let fileIdCounter = 0;
+
+  const formatSize = (bytes) => {
+    if (bytes > 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    if (bytes > 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return bytes + " B";
+  };
+
+  const ensurePreviewVisible = () => {
+    if (!preview || !fileListEl) return;
+    if (fileListEl.children.length > 0) preview.classList.remove("hidden");
+    else preview.classList.add("hidden");
+  };
+
+  const createFileRow = (file, fileId) => {
+    if (!fileListEl) return;
+
+    const server = (serverSelect instanceof HTMLSelectElement ? serverSelect.value : "") || "";
+    const rawTag = (tagSelect instanceof HTMLSelectElement ? tagSelect.value : "") || "";
+    const tag = rawTag || "sin etiqueta";
+    const meta = formatSize(file.size) + " · Servidor: " + (server || "—") + " · " + tag;
+
+    const row = document.createElement("div");
+    row.className = "flex items-center justify-between gap-4 text-xs rounded-lg bg-[#F9FAFB]";
+    row.dataset.fileId = fileId;
+    row.dataset.filename = file.name;
+    row.dataset.server = server;
+    row.dataset.tag = rawTag;
+
+    row.innerHTML = `
+      <div class="flex items-center gap-3 min-w-0">
+        <span
+          class="h-8 w-8 rounded-xl bg-white border border-[#E5E7EB]
+                 flex items-center justify-center shrink-0"
+        >
+          <img
+            src="/svg/file.svg"
+            alt="Archivo de log"
+            class="h-4 w-4"
+            loading="lazy"
+          />
+        </span>
+        <div class="flex flex-col min-w-0">
+          <span class="text-[#111827] text-sm truncate max-w-xs">${file.name}</span>
+          <span class="text-[11px] text-[#6B7280] truncate max-w-sm">${meta}</span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        data-remove-file
+        class="text-xs text-[#9CA3AF] hover:text-[#EF4444] shrink-0"
+      >
+        ✕
+      </button>
+    `;
+
+    fileListEl.appendChild(row);
+    ensurePreviewVisible();
+  };
+
+  const handleFiles = (fileList) => {
+    if (!fileList) return;
+    Array.from(fileList).forEach((file) => {
+      const fileId = String(++fileIdCounter);
+      selectedFiles.set(fileId, file);
+      createFileRow(file, fileId);
+    });
+
+    if (fileInput instanceof HTMLInputElement) fileInput.value = "";
+  };
+
+  // ---- drag & drop ----
+  ["dragenter", "dragover"].forEach((eventName) => {
+    dropzone?.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (dropzone instanceof HTMLElement) dropzone.classList.add("bg-[#F3F4F6]");
+    });
+  });
+
+  ["dragleave", "drop"].forEach((eventName) => {
+    dropzone?.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (dropzone instanceof HTMLElement) dropzone.classList.remove("bg-[#F3F4F6]");
+    });
+  });
+
+  dropzone?.addEventListener("drop", (event) => {
+    const dt = event.dataTransfer;
+    if (!dt || !dt.files || dt.files.length === 0) return;
+    handleFiles(dt.files);
+  });
+
+  fileInput?.addEventListener("change", () => {
+    if (!(fileInput instanceof HTMLInputElement)) return;
+    if (!fileInput.files || fileInput.files.length === 0) return;
+    handleFiles(fileInput.files);
+  });
+
+  // Eliminar archivo individual (delegado)
+  preview?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    if (target.matches("[data-remove-file]")) {
+      const row = target.closest("div[data-file-id]");
+      if (row && fileListEl) {
+        const fileId = row.dataset.fileId;
+        if (fileId) selectedFiles.delete(fileId);
+        row.remove();
+        ensurePreviewVisible();
+      }
+    }
+  });
+
+  // ---- Subir TODOS los archivos (a la API) ----
+  processAllBtn?.addEventListener("click", async () => {
+    if (selectedFiles.size === 0) {
+      alert("No hay archivos para procesar.");
+      return;
+    }
+
+    const token = localStorage.getItem("sentinelx_token");
+    if (!token) {
+      alert("Tu sesión ha expirado, vuelve a iniciar sesión.");
+      window.location.href = "/login";
+      return;
+    }
+
+    const server = (serverSelect instanceof HTMLSelectElement ? serverSelect.value : "") || "";
+    const tag = (tagSelect instanceof HTMLSelectElement ? tagSelect.value : "") || "";
+
+    if (!server || !tag) {
+      alert("Debes seleccionar Servidor y Etiqueta antes de subir logs.");
+      return;
+    }
+
+    if (!(processAllBtn instanceof HTMLButtonElement)) return;
+
+    processAllBtn.disabled = true;
+    const originalText = processAllBtn.textContent;
+    processAllBtn.textContent = "Subiendo...";
+
+    try {
+      for (const [, file] of selectedFiles.entries()) {
+        const formData = new FormData();
+        formData.append("server", server);
+        formData.append("tag", tag);
+        formData.append("file", file, file.name);
+
+        try {
+          const res = await fetch(`${API_BASE}/logs/upload`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });
+
+          if (!res.ok) {
+            console.error("Error subiendo archivo:", file.name, res.status);
+          }
+        } catch (err) {
+          console.error("Error de red subiendo archivo:", file.name, err);
+        }
+      }
+
+      selectedFiles.clear();
+      if (fileListEl) fileListEl.innerHTML = "";
+      ensurePreviewVisible();
+
+      await loadHistoryFromApi(true);
+    } finally {
+      processAllBtn.disabled = false;
+      processAllBtn.textContent = originalText || "Procesar logs";
+    }
+  });
+
+  // ---- Historial paginado desde la API ----
+  let currentOffset = 0;
+  const pageSize = 5;
+  let totalItems = 0;
+
+  function appendHistoryRows(items) {
+    if (!historyBody) return;
+
+    items.forEach((item) => {
+      const tr = document.createElement("tr");
+      tr.className = "border-b border-[#F3F4F6]";
+
+      const tdFile = document.createElement("td");
+      tdFile.className = "py-2 px-3 whitespace-nowrap";
+      tdFile.textContent = item.filename;
+
+      const tdServer = document.createElement("td");
+      tdServer.className = "py-2 px-3";
+      tdServer.textContent = item.server;
+
+      const tdFecha = document.createElement("td");
+      tdFecha.className = "py-2 px-3 text-[11px]";
+      const fecha = new Date(item.uploaded_at);
+      tdFecha.textContent =
+        fecha.toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) +
+        " · " +
+        fecha.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+
+      const tdEstado = document.createElement("td");
+      tdEstado.className = "py-2 px-3";
+
+      let color = "#9CA3AF";
+      let label = "Pendiente";
+
+      if (item.status === "processed") {
+        color = "#22C55E";
+        label = "Procesado";
+      } else if (item.status === "error" || item.status === "failed") {
+        color = "#EF4444";
+        label = "Error";
+      } else if (item.status === "processing") {
+        color = "#F59E0B";
+        label = "Procesando";
+      }
+
+      tdEstado.innerHTML = `
+        <span class="inline-flex items-center gap-2 text-[11px]" style="color:${color}">
+          <span class="h-2.5 w-2.5 rounded-full" style="background-color:${color}"></span>
+          ${label}
+        </span>
+      `;
+
+      tr.append(tdFile, tdServer, tdFecha, tdEstado);
+      historyBody.appendChild(tr);
+    });
+  }
+
+  async function loadHistoryFromApi(reset = false) {
+    const token = localStorage.getItem("sentinelx_token");
+    if (!token) return;
+
+    if (reset) {
+      currentOffset = 0;
+      totalItems = 0;
+      if (historyBody) historyBody.innerHTML = "";
+    }
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/logs/uploads?limit=${pageSize}&offset=${currentOffset}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!res.ok) {
+        console.error("No se pudo obtener el historial de logs", res.status);
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!data || !Array.isArray(data.items)) {
+        console.error("Respuesta inesperada de /logs/uploads: ", data);
+        return;
+      }
+
+      totalItems = data.total ?? data.items.length;
+      appendHistoryRows(data.items);
+
+      currentOffset += data.items.length;
+
+      if (verMasBtn) {
+        if (currentOffset >= totalItems) verMasBtn.classList.add("hidden");
+        else verMasBtn.classList.remove("hidden");
+      }
+    } catch (err) {
+      console.error("Error de red al obtener historial de logs:", err);
+    }
+  }
+
+  verMasBtn?.addEventListener("click", () => {
+    loadHistoryFromApi(false);
+  });
+
+  // Cargar servidores (dropdown) y luego historial
+  await loadServersForUpload();
+  await loadHistoryFromApi(true);
+</script>

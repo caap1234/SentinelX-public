@@ -1,0 +1,352 @@
+---
+/**
+ * Todo se carga en el navegador desde /dashboard/activity
+ */
+const MAX_BAR_HEIGHT = 140;
+const TICKS = 4;
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000"
+---
+
+<div
+  class="rounded-xl bg-white border border-[#E5E7EB] px-8 pt-8 pb-6 shadow-sm flex flex-col gap-6"
+>
+  <!-- Títulos -->
+  <div class="text-center">
+    <h2 class="text-[18px] font-semibold text-[#111827]">
+      Actividad en el tiempo
+    </h2>
+    <p class="text-sm text-[#6B7280] mt-1">
+      Alertas detectadas por día
+    </p>
+  </div>
+
+  <!-- Área gráfica -->
+  <div class="flex-1">
+    <!-- Contenedor donde se dibujarán líneas + barras -->
+    <div
+      class="relative w-full h-[200px]"
+      data-chart-area
+      data-max-bar-height={MAX_BAR_HEIGHT}
+      data-ticks={TICKS}
+    ></div>
+
+    <!-- Labels eje X -->
+    <div class="mt-2 ml-12 mr-4 flex justify-between" data-x-labels></div>
+
+    <!-- Leyenda -->
+    <div class="mt-4 flex flex-col gap-1 text-[11px] text-[#111827]">
+      <div class="flex items-center gap-2">
+        <span class="inline-block h-2 w-2 rounded-sm bg-[#E67E22]"></span>
+        <span>Fuerza bruta (naranja)</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="inline-block h-2 w-2 rounded-sm bg-[#F0B400]"></span>
+        <span>Bots / escaneos automatizados (amarillo)</span>
+      </div>
+    </div>
+
+    <!-- Detalle extendido de métricas -->
+    <div
+      class="mt-4 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-[11px] text-[#111827]"
+      data-activity-details
+    >
+      <p class="text-center text-[#9CA3AF]">
+        Cargando resumen de actividad…
+      </p>
+    </div>
+  </div>
+
+  <script type="module" define:vars={{ API_BASE }}>
+    const chartArea = document.querySelector("[data-chart-area]");
+    const xLabels = document.querySelector("[data-x-labels]");
+    const detailsBox = document.querySelector("[data-activity-details]");
+
+    const MAX_BAR_HEIGHT = Number(
+      chartArea?.dataset.maxBarHeight || 140
+    );
+    const TICKS = Number(chartArea?.dataset.ticks || 4);
+
+    // @ts-ignore
+    const TOKEN = window.SENTINELX_TOKEN || null;
+
+    /**
+     * @param {{server:string; dateRange:string; severity:string; rangeFrom?:string|null; rangeTo?:string|null}} filters
+     */
+    function buildQueryParams(filters) {
+      const params = new URLSearchParams();
+
+      if (filters.server && filters.server !== "all") {
+        params.set("server", filters.server);
+      }
+
+      if (filters.dateRange === "1d") {
+        params.set("days", "1");
+      } else if (filters.dateRange === "7d") {
+        params.set("days", "7");
+      } else if (filters.dateRange === "30d") {
+        params.set("days", "30");
+      } else if (
+        filters.dateRange === "range" &&
+        filters.rangeFrom &&
+        filters.rangeTo
+      ) {
+        params.set("from", filters.rangeFrom);
+        params.set("to", filters.rangeTo);
+      } else {
+        params.set("days", "7");
+      }
+
+      return params;
+    }
+
+    /**
+     * @typedef {{
+     *  date: string;
+     *  label?: string;
+     *  bruteForce: number;
+     *  bots: number;
+     *  exploits: number;
+     *  wpCoreErrors: number;
+     *  fileAnomalies: number;
+     *  mailThreats: number;
+     *  panelAccess: number;
+     * }} ActivityPoint
+     */
+
+    /**
+     * @param {{server:string; dateRange:string; severity:string; rangeFrom?:string|null; rangeTo?:string|null}} filters
+     */
+    async function loadActivity(filters) {
+      if (!chartArea || !xLabels || !detailsBox) return;
+
+      const params = buildQueryParams(filters);
+
+      const res = await fetch(
+        `${API_BASE}/dashboard/activity?${params.toString()}`,
+        {
+          headers: TOKEN
+            ? {
+                Authorization: `Bearer ${TOKEN}`,
+                Accept: "application/json",
+              }
+            : { Accept: "application/json" },
+        }
+      );
+
+      if (!res.ok) {
+        console.error("Error cargando /dashboard/activity:", await res.text());
+        chartArea.innerHTML = "";
+        xLabels.innerHTML = "";
+        detailsBox.innerHTML =
+          '<p class="text-center text-[#DC2626] text-[11px]">No se pudo cargar la actividad.</p>';
+        return;
+      }
+
+      const payload = await res.json();
+      /** @type {ActivityPoint[]} */
+      const data = payload.series || [];
+
+      if (!Array.isArray(data) || data.length === 0) {
+        chartArea.innerHTML = "";
+        xLabels.innerHTML = "";
+        detailsBox.innerHTML =
+          '<p class="text-center text-[#9CA3AF] text-[11px]">Sin datos de actividad disponibles.</p>';
+        return;
+      }
+
+      const allValues = data.flatMap((d) => [d.bruteForce, d.bots]);
+      const maxValue = Math.max(...allValues, 1);
+      const scale = MAX_BAR_HEIGHT / maxValue;
+
+      chartArea.innerHTML = "";
+      xLabels.innerHTML = "";
+
+      // --- Ticks eje Y ---
+      const ticksFrag = document.createDocumentFragment();
+      for (let i = 0; i <= TICKS; i++) {
+        const value = Math.round((maxValue / TICKS) * i);
+        const percent = (i / TICKS) * 100;
+
+        const row = document.createElement("div");
+        row.className = "absolute left-0 right-0 flex items-center";
+        row.style.bottom = percent + "%";
+
+        const label = document.createElement("span");
+        label.className =
+          "w-10 pr-1 text-[10px] text-[#9CA3AF] text-right";
+        label.textContent = String(value);
+
+        const line = document.createElement("div");
+        line.className = "flex-1 border-t border-[#E5E7EB]";
+
+        row.append(label, line);
+        ticksFrag.append(row);
+      }
+      chartArea.append(ticksFrag);
+
+      // --- Barras ---
+      const barsRow = document.createElement("div");
+      barsRow.className =
+        "absolute inset-y-2 bottom-2 left-12 right-4 flex items-end justify-between";
+
+      data.forEach((point) => {
+        const group = document.createElement("div");
+        group.className = "flex items-end gap-1";
+
+        const bar1 = document.createElement("span");
+        bar1.className = "w-4 rounded-md bg-[#E67E22]";
+        bar1.style.height = point.bruteForce * scale + "px";
+
+        const bar2 = document.createElement("span");
+        bar2.className = "w-4 rounded-md bg-[#F0B400]";
+        bar2.style.height = point.bots * scale + "px";
+
+        group.append(bar1, bar2);
+        barsRow.append(group);
+
+        const xLabel = document.createElement("span");
+        xLabel.className = "text-[11px] text-[#6B7280]";
+        // usamos label del backend; si no viene, caemos al date
+        xLabel.textContent = point.label || point.date;
+        xLabels.append(xLabel);
+      });
+
+      chartArea.append(barsRow);
+
+      renderDetails(detailsBox, data);
+    }
+
+    /**
+     * @param {HTMLElement} box
+     * @param {ActivityPoint[]} data
+     */
+    function renderDetails(box, data) {
+      if (!data.length) {
+        box.innerHTML =
+          '<p class="text-center text-[#9CA3AF] text-[11px]">Sin datos de actividad.</p>';
+        return;
+      }
+
+      const totals = {
+        bruteForce: 0,
+        bots: 0,
+        exploits: 0,
+        wpCoreErrors: 0,
+        fileAnomalies: 0,
+        mailThreats: 0,
+        panelAccess: 0,
+      };
+
+      data.forEach((d) => {
+        totals.bruteForce += d.bruteForce || 0;
+        totals.bots += d.bots || 0;
+        totals.exploits += d.exploits || 0;
+        totals.wpCoreErrors += d.wpCoreErrors || 0;
+        totals.fileAnomalies += d.fileAnomalies || 0;
+        totals.mailThreats += d.mailThreats || 0;
+        totals.panelAccess += d.panelAccess || 0;
+      });
+
+      const last = data[data.length - 1];
+
+      box.innerHTML = `
+        <div class="flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-[12px] text-[#111827]">
+              Resumen de la ventana analizada
+            </span>
+            <span class="text-[11px] text-[#6B7280]">
+              Días: ${data.length}
+            </span>
+          </div>
+
+          <div class="grid gap-2 md:grid-cols-3 text-[11px]">
+            <div>
+              <p class="font-semibold text-[#111827]">Fuerza bruta</p>
+              <p class="text-[#6B7280]">
+                Total: <span class="font-semibold">${totals.bruteForce}</span><br>
+                Último día: ${last.bruteForce}
+              </p>
+            </div>
+
+            <div>
+              <p class="font-semibold text-[#111827]">Bots / escaneos</p>
+              <p class="text-[#6B7280]">
+                Total: <span class="font-semibold">${totals.bots}</span><br>
+                Último día: ${last.bots}
+              </p>
+            </div>
+
+            <div>
+              <p class="font-semibold text-[#111827]">Intentos de exploit</p>
+              <p class="text-[#6B7280]">
+                Total: <span class="font-semibold">${totals.exploits}</span><br>
+                Último día: ${last.exploits}
+              </p>
+            </div>
+
+            <div>
+              <p class="font-semibold text-[#111827]">Errores núcleo WordPress</p>
+              <p class="text-[#6B7280]">
+                Total: <span class="font-semibold">${totals.wpCoreErrors}</span><br>
+                Último día: ${last.wpCoreErrors}
+              </p>
+            </div>
+
+            <div>
+              <p class="font-semibold text-[#111827]">Anomalías de archivos</p>
+              <p class="text-[#6B7280]">
+                Total: <span class="font-semibold">${totals.fileAnomalies}</span><br>
+                Último día: ${last.fileAnomalies}
+              </p>
+            </div>
+
+            <div>
+              <p class="font-semibold text-[#111827]">Amenazas en correo</p>
+              <p class="text-[#6B7280]">
+                Total: <span class="font-semibold">${totals.mailThreats}</span><br>
+                Último día: ${last.mailThreats}
+              </p>
+            </div>
+
+            <div>
+              <p class="font-semibold text-[#111827]">Accesos a panel</p>
+              <p class="text-[#6B7280]">
+                Total: <span class="font-semibold">${totals.panelAccess}</span><br>
+                Último día: ${last.panelAccess}
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function getInitialFilters() {
+      // @ts-ignore
+      return (
+        window.SENTINELX_CURRENT_FILTERS || {
+          server: "all",
+          dateRange: "7d",
+          severity: "all",
+          rangeFrom: null,
+          rangeTo: null,
+        }
+      );
+    }
+
+    // carga inicial
+    loadActivity(getInitialFilters()).catch((e) =>
+      console.error("Error inicial actividad:", e)
+    );
+
+    // escuchar cambios de filtros
+    window.addEventListener("sentinelx:filters-changed", (ev) => {
+      // @ts-ignore
+      const filters = ev.detail;
+      loadActivity(filters).catch((e) =>
+        console.error("Error recargando actividad:", e)
+      );
+    });
+  </script>
+</div>

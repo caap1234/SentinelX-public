@@ -1,0 +1,1386 @@
+---
+// src/pages/dashboard/ips.astro
+import DashboardLayout from "../../layouts/DashboardLayout.astro";
+import HeaderBar from "../../components/dashboard/HeaderBar.astro";
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000";
+---
+
+<DashboardLayout pageTitle="SentinelX SIEM – Entidades">
+  <HeaderBar
+    title="Entidades"
+    subtitle="Vista unificada de entidades detectadas (IPs, usuarios, hosts, etc.). Filtra por servidor, fechas y severidad."
+    showFilters={true}
+    showServerFilter={true}
+    showDateFilter={true}
+    showSeverityFilter={true}
+  />
+
+  <section class="flex-1 px-8 py-6 space-y-6">
+    <!-- KPIs superiores (2 filas para evitar cortes) -->
+    <div class="space-y-4">
+      <!-- Fila 1: Total / País / Pendientes / Revisadas -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="rounded-xl bg-white border border-[#E5E7EB] px-5 py-4 shadow-sm flex flex-col justify-center">
+          <p class="text-[11px] uppercase tracking-wide text-[#9CA3AF]">Total entidades</p>
+          <p class="mt-2 text-2xl font-semibold text-[#111827]" data-kpi-total>0</p>
+        </div>
+
+        <!-- ✅ País más frecuente (solo IPs) -->
+        <div class="rounded-xl bg-white border border-[#E5E7EB] px-5 py-4 shadow-sm flex flex-col justify-center">
+          <p class="text-[11px] uppercase tracking-wide text-[#9CA3AF]">País más frecuente (IPs)</p>
+          <!-- sin truncate para que no se corte -->
+          <p class="mt-2 text-2xl font-semibold text-[#111827] break-words" data-kpi-country>—</p>
+        </div>
+
+        <div class="rounded-xl bg-white border border-[#E5E7EB] px-5 py-4 shadow-sm flex flex-col justify-center">
+          <p class="text-[11px] uppercase tracking-wide text-[#9CA3AF]">Pendientes</p>
+          <p class="mt-2 text-2xl font-semibold text-[#111827]" data-kpi-pending>0</p>
+        </div>
+
+        <div class="rounded-xl bg-white border border-[#E5E7EB] px-5 py-4 shadow-sm flex flex-col justify-center">
+          <p class="text-[11px] uppercase tracking-wide text-[#9CA3AF]">Revisadas</p>
+          <p class="mt-2 text-2xl font-semibold text-[#111827]" data-kpi-reviewed>0</p>
+        </div>
+      </div>
+
+      <!-- Fila 2: Entidad top score + ASN (centradas y con ancho flexible) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="rounded-xl bg-white border border-[#E5E7EB] px-5 py-4 shadow-sm flex flex-col justify-center text-center">
+          <p class="text-[11px] uppercase tracking-wide text-[#9CA3AF]">Entidad con mayor score</p>
+          <!-- sin truncate para que crezca -->
+          <p class="mt-2 text-2xl font-semibold text-[#111827] break-words" data-kpi-top>—</p>
+        </div>
+
+        <div class="rounded-xl bg-white border border-[#E5E7EB] px-5 py-4 shadow-sm flex flex-col justify-center text-center">
+          <p class="text-[11px] uppercase tracking-wide text-[#9CA3AF]">ASN más frecuente (IPs)</p>
+          <!-- sin truncate para que crezca -->
+          <p class="mt-2 text-2xl font-semibold text-[#111827] break-words" data-kpi-asn>—</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla principal -->
+    <div class="rounded-xl bg-white border border-[#E5E7EB] px-8 py-5 shadow-sm">
+      <div class="text-center mb-2">
+        <h2 class="text-sm font-semibold text-[#111827]">Entidades</h2>
+        <p class="text-[11px] text-[#9CA3AF] mt-1">
+          Basado en Entities v2 (score_current + attrs). El filtro de servidor aplica por attrs.server(s) cuando existan.
+        </p>
+      </div>
+
+      <!-- Filtro por estatus -->
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        <div class="text-[11px] uppercase tracking-wide text-[#9CA3AF]">
+          Filtrar por estatus:
+        </div>
+        <div class="flex flex-wrap gap-2" data-entity-status-chips>
+          <button type="button" class="entity-chip" data-entity-status="all">Todos</button>
+          <button type="button" class="entity-chip" data-entity-status="open">Pendientes</button>
+          <button type="button" class="entity-chip" data-entity-status="closed">Revisados</button>
+        </div>
+      </div>
+
+      <div class="mt-4 overflow-x-auto overflow-y-visible relative">
+        <table class="min-w-full text-xs">
+          <thead>
+            <tr class="text-[#6B7280] border-b border-[#E5E7EB]">
+              <th class="py-3 px-3 text-left">Entidad</th>
+              <th class="py-3 px-3 text-center">Tipo</th>
+              <th class="py-3 px-3 text-center">Score</th>
+              <th class="py-3 px-3 text-center">Severidad</th>
+              <th class="py-3 px-3 text-center">Scope</th>
+              <th class="py-3 px-3 text-center">Último visto</th>
+              <th class="py-3 px-3 text-center">Servidores</th>
+              <th class="py-3 px-3 text-center">Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody class="text-[#4B5563]" data-entities-body></tbody>
+        </table>
+      </div>
+
+      <!-- Paginación -->
+      <div class="flex items-center justify-between mt-4">
+        <button
+          class="inline-flex items-center px-4 py-2 rounded-full border border-[#D1D5DB] text-[12px] text-[#374151] hover:bg-[#F3F4F6]"
+          type="button"
+          data-prev
+        >
+          Anterior
+        </button>
+
+        <div class="flex flex-wrap gap-1 justify-center" data-pagination></div>
+
+        <button
+          class="inline-flex items-center px-4 py-2 rounded-full border border-[#D1D5DB] text-[12px] text-[#374151] hover:bg-[#F3F4F6]"
+          type="button"
+          data-next
+        >
+          Siguiente
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal detalle (alertas relacionadas) -->
+    <div data-entity-modal-backdrop class="hidden fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col border border-[#E5E7EB]">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-[#E5E7EB]">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-[#9CA3AF]">Alertas relacionadas</p>
+            <p class="text-sm font-semibold text-[#111827]" data-entity-modal-title>—</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              data-entity-modal-mark-reviewed
+              class="inline-flex items-center px-3 py-1.5 rounded-full border border-[#111827] text-[12px] text-[#111827] hover:bg-[#F3F4F6]"
+              title="Abrir revisión de Entity"
+            >
+              Marcar como revisada
+            </button>
+
+            <button type="button" data-entity-modal-close class="h-7 w-7 rounded-full flex items-center justify-center hover:bg-[#F3F4F6]">
+              <span class="text-sm text-[#6B7280]">✕</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="px-5 py-3 flex flex-wrap gap-4 text-[11px] text-[#6B7280]" data-entity-modal-summary></div>
+        <div class="px-5 pb-4 overflow-y-auto" data-entity-modal-body></div>
+
+        <div class="px-5 py-4 border-t border-[#E5E7EB] text-right">
+          <button
+            type="button"
+            class="inline-flex items-center px-4 py-2 rounded-full border border-[#D1D5DB] text-[12px] text-[#374151] hover:bg-[#F3F4F6]"
+            data-entity-modal-close
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal revisión de Entity -->
+    <div data-review-modal-backdrop class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col border border-[#E5E7EB]">
+        <div class="flex items-start justify-between px-6 py-4 border-b border-[#E5E7EB]">
+          <div>
+            <p class="text-xs uppercase tracking-wide text-[#9CA3AF]">Revisión de Entity</p>
+            <p class="text-lg font-semibold text-[#111827]" data-review-entity-title>—</p>
+          </div>
+          <button type="button" data-review-close class="h-9 w-9 rounded-full flex items-center justify-center hover:bg-[#F3F4F6]">
+            <span class="text-xl text-[#6B7280]">×</span>
+          </button>
+        </div>
+
+        <div class="px-6 py-5 overflow-y-auto">
+          <div class="rounded-xl border border-[#E5E7EB] bg-white p-4">
+            <p class="text-[12px] text-[#6B7280]">
+              Marca la entidad como revisada (Entity.state=closed). Opcionalmente puedes cerrar alertas en cascada usando el filtro de servidor actual (si aplica).
+            </p>
+
+            <div class="mt-4 space-y-3">
+              <label class="flex items-start gap-3">
+                <input type="radio" name="review_mode" value="cascade" data-review-mode class="mt-1 h-5 w-5 accent-[#E67E22]" checked />
+                <span class="text-[13px] text-[#111827]">Aplicar cambios en cascada (alertas)</span>
+              </label>
+
+              <label class="flex items-start gap-3">
+                <input type="radio" name="review_mode" value="separate" data-review-mode class="mt-1 h-5 w-5 accent-[#E67E22]" />
+                <span class="text-[13px] text-[#111827]">Configurar por separado (abrir en Alertas)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="mt-5" data-review-cascade-panel>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">Estatus de alertas</label>
+                <select
+                  class="w-full h-10 rounded-full border border-[#D1D5DB] bg-white text-sm text-[#111827] px-4 pr-8 appearance-none
+                        focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+                  data-review-alerts-status
+                >
+                  <option value="resolved" selected>Resuelto</option>
+                  <option value="false_positive">Falso positivo</option>
+                  <option value="open">Pendiente</option>
+                </select>
+              </div>
+
+              <div class="rounded-xl border border-[#E5E7EB] bg-white p-4">
+                <p class="text-[12px] font-semibold text-[#111827]">Alcance</p>
+                <p class="mt-1 text-[11px] text-[#6B7280]">
+                  Se actualizarán alertas asociadas a esta entidad (por match en evidencia/group_key/descripcion). Si hay filtro de servidor, solo aplica a ese server.
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-5 rounded-xl border border-[#E5E7EB] bg-white p-4">
+              <p class="text-[12px] text-[#6B7280]">Etiquetas (opcional)</p>
+
+              <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">Disposición (opcional)</label>
+                  <select
+                    class="w-full h-10 rounded-full border border-[#D1D5DB] bg-white text-sm text-[#111827] px-4 pr-8 appearance-none
+                          focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+                    data-review-disposition
+                  >
+                    <option value="" selected>— Disposición (opcional) —</option>
+                    <option value="informational">Informativo</option>
+                    <option value="benign">Benigno</option>
+                    <option value="true_positive">Positivo real</option>
+                    <option value="mitigated">Mitigado</option>
+                    <option value="needs_followup">Requiere seguimiento</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">Nota (opcional)</label>
+                <textarea
+                  class="w-full min-h-[92px] rounded-2xl border border-[#D1D5DB] bg-white text-sm text-[#111827] px-4 py-3
+                        focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+                  placeholder="Nota (opcional)"
+                  data-review-note
+                ></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-5 hidden" data-review-separate-panel>
+            <div class="rounded-xl border border-[#E5E7EB] bg-white p-4">
+              <p class="text-[12px] font-semibold text-[#111827]">Configurar por separado</p>
+              <p class="mt-1 text-[11px] text-[#6B7280]">Abriremos la página de Alertas filtrada por esta entidad.</p>
+
+              <div class="mt-4">
+                <button
+                  type="button"
+                  class="inline-flex items-center px-4 py-2 rounded-full border border-[#E67E22] text-[12px] text-[#E67E22] hover:bg-[#FFF7ED]"
+                  data-review-open-alerts
+                >
+                  Abrir en Alertas
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 text-[12px] text-[#6B7280]" data-review-msg></div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-[#E5E7EB] flex items-center justify-end gap-3">
+          <button
+            type="button"
+            class="inline-flex items-center px-5 py-2 rounded-full border border-[#D1D5DB] text-[12px] text-[#374151] hover:bg-[#F3F4F6]"
+            data-review-cancel
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex items-center px-5 py-2 rounded-full border border-[#E67E22] text-[12px] text-[#E67E22] hover:bg-[#FFF7ED]"
+            data-review-save
+          >
+            Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <style>
+    .entity-chip {
+      height: 32px;
+      padding: 0 14px;
+      font-size: 11px;
+      border-radius: 9999px;
+      border: 1px solid #E5E7EB;
+      color: #111827;
+      background: white;
+      transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+    }
+    .entity-chip:not(.active):hover { background-color: #F3F4F6; }
+    .entity-chip.active {
+      background-color: #111827;
+      color: white;
+      border-color: #111827;
+      cursor: default;
+    }
+    .entity-chip.active:hover { background-color: #111827; color: white; }
+  </style>
+
+  <script type="module" define:vars={{ API_BASE }}>
+    const tbody = document.querySelector("[data-entities-body]");
+
+    const LIMIT = 50;
+    const pagination = document.querySelector("[data-pagination]");
+    const prevBtn = document.querySelector("[data-prev]");
+    const nextBtn = document.querySelector("[data-next]");
+
+    const chipsHost = document.querySelector("[data-entity-status-chips]");
+
+    const entityModalBackdrop = document.querySelector("[data-entity-modal-backdrop]");
+    const entityModalTitle = document.querySelector("[data-entity-modal-title]");
+    const entityModalSummary = document.querySelector("[data-entity-modal-summary]");
+    const entityModalBody = document.querySelector("[data-entity-modal-body]");
+    const entityModalCloseBtn = document.querySelectorAll("[data-entity-modal-close]");
+    const entityModalMarkReviewedBtn = document.querySelector("[data-entity-modal-mark-reviewed]");
+
+    const reviewBackdrop = document.querySelector("[data-review-modal-backdrop]");
+    const reviewClose = document.querySelector("[data-review-close]");
+    const reviewCancel = document.querySelector("[data-review-cancel]");
+    const reviewSave = document.querySelector("[data-review-save]");
+    const reviewEntityTitle = document.querySelector("[data-review-entity-title]");
+    const reviewMsg = document.querySelector("[data-review-msg]");
+
+    const reviewModes = document.querySelectorAll("input[data-review-mode]");
+    const cascadePanel = document.querySelector("[data-review-cascade-panel]");
+    const separatePanel = document.querySelector("[data-review-separate-panel]");
+    const btnOpenAlerts = document.querySelector("[data-review-open-alerts]");
+
+    const reviewAlertsStatus = document.querySelector("[data-review-alerts-status]");
+    const reviewDisposition = document.querySelector("[data-review-disposition]");
+    const reviewNote = document.querySelector("[data-review-note]");
+
+    /** @type {any[]} */
+    let allEntities = [];
+    let state = { page: 1, total: 0, pages: 1 };
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const INCIDENT_ID = urlParams.get("incident_id");
+
+    let activeFilters = {
+      server: "all",
+      dateRange: "7d",   // 1d | 7d | 30d | custom
+      severity: "all",   // all | high | medium | low | info
+      rangeFrom: null,   // ISO string
+      rangeTo: null,     // ISO string
+      entityStatus: "open",  // open | closed | all
+    };
+
+    const getToken = () => localStorage.getItem("sentinelx_token");
+
+    const isIpEntity = (e) => String(e?.entity_type || "").toLowerCase().trim() === "ip";
+
+    const setChipActive = (value) => {
+      if (!chipsHost) return;
+      const btns = chipsHost.querySelectorAll("button[data-entity-status]");
+      btns.forEach((b) => {
+        const v = b.getAttribute("data-entity-status");
+        b.classList.toggle("active", v === value);
+      });
+    };
+
+    const getServers = (e) => {
+      const a = (e && typeof e.attrs === "object" && e.attrs) ? e.attrs : {};
+      const s = a.servers;
+      if (Array.isArray(s)) return s.map(String).filter(Boolean);
+      const s1 = a.server ? [String(a.server)] : [];
+      const s2 = a.host ? [String(a.host)] : [];
+      const s3 = a.hostname ? [String(a.hostname)] : [];
+      const out = [...s1, ...s2, ...s3].map((x) => String(x).trim()).filter(Boolean);
+
+      // unique preserve order
+      const seen = new Set();
+      const uniq = [];
+      for (const x of out) {
+        if (seen.has(x)) continue;
+        seen.add(x);
+        uniq.push(x);
+      }
+      return uniq;
+    };
+
+    // ✅ robust extractors (para IPs enriquecidas)
+    const getAttrs = (e) => (e && typeof e.attrs === "object" && e.attrs) ? e.attrs : {};
+
+    const getIpAsnLabel = (e) => {
+      const a = getAttrs(e);
+
+      // common shapes:
+      // attrs.asn: { number, org }, attrs.asn_org, attrs.asn_number, attrs.asn: "ASxxxx ..."
+      const asn = a.asn;
+
+      if (asn && typeof asn === "object") {
+        const num = asn.number ?? asn.asn ?? asn.id ?? null;
+        const org = asn.org ?? asn.organization ?? asn.name ?? null;
+        if (num && org) return `AS${String(num).replace(/^AS/i, "")} ${String(org)}`.trim();
+        if (num) return `AS${String(num).replace(/^AS/i, "")}`.trim();
+        if (org) return String(org).trim();
+      }
+
+      if (typeof asn === "string" && asn.trim()) return asn.trim();
+
+      const num2 = a.asn_number ?? a.asnNumber ?? a.asn_id ?? null;
+      const org2 = a.asn_org ?? a.asnOrg ?? a.asn_name ?? a.asnName ?? null;
+
+      if (num2 && org2) return `AS${String(num2).replace(/^AS/i, "")} ${String(org2)}`.trim();
+      if (num2) return `AS${String(num2).replace(/^AS/i, "")}`.trim();
+      if (org2) return String(org2).trim();
+
+      return "";
+    };
+
+    const getIpCountryLabel = (e) => {
+      const a = getAttrs(e);
+
+      // common shapes:
+      // attrs.geoip: { country, country_code }, attrs.geo: { country, country_code }, attrs.country
+      const geoip = a.geoip;
+      const geo = a.geo;
+
+      const pick = (obj) => {
+        if (!obj || typeof obj !== "object") return "";
+        const name =
+          obj.country_name ?? obj.countryName ?? obj.country ?? obj.country_label ?? "";
+        const code =
+          obj.country_code ?? obj.countryCode ?? obj.cc ?? "";
+        const n = String(name || "").trim();
+        const c = String(code || "").trim().toUpperCase();
+
+        if (n && c) return `${n} (${c})`;
+        if (n) return n;
+        if (c) return c;
+        return "";
+      };
+
+      const v1 = pick(geoip);
+      if (v1) return v1;
+
+      const v2 = pick(geo);
+      if (v2) return v2;
+
+      const flat =
+        a.country_name ?? a.countryName ?? a.country ?? a.country_code ?? a.countryCode ?? "";
+      const flatStr = String(flat || "").trim();
+      return flatStr;
+    };
+
+    const mostFrequent = (labels) => {
+      const counts = new Map();
+      for (const raw of labels) {
+        const k = String(raw || "").trim();
+        if (!k) continue;
+        counts.set(k, (counts.get(k) || 0) + 1);
+      }
+      let bestK = "";
+      let bestN = 0;
+      for (const [k, n] of counts.entries()) {
+        if (n > bestN) { bestN = n; bestK = k; }
+      }
+      return bestK ? { label: bestK, count: bestN } : null;
+    };
+
+    const fmtDate = (iso) => {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return String(iso);
+      return d.toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
+    };
+
+    const entityLevelFromSeverity = (sevStr) => {
+      const s = String(sevStr || "").toLowerCase().trim();
+      if (s === "critical") return "high";     // UI bucket
+      if (s === "high") return "high";
+      if (s === "medium") return "medium";
+      if (s === "low") return "low";
+      if (s === "clean") return "info";
+      return "info";
+    };
+
+    const SEVERITY_BADGE_CLASSES = {
+      high: "bg-[#FEE2E2] text-[#B91C1C]",
+      medium: "bg-[#FEF3C7] text-[#92400E]",
+      low: "bg-[#DBEAFE] text-[#1D4ED8]",
+      info: "bg-[#E5E7EB] text-[#374151]",
+    };
+
+    const SEVERITY_LABEL = {
+      high: "Alta",
+      medium: "Media",
+      low: "Baja",
+      info: "Info",
+    };
+
+    const SCORE_BADGE_CLASSES = {
+      low: "bg-[#E5E7EB] text-[#374151]",
+      medium: "bg-[#FEF3C7] text-[#92400E]",
+      high: "bg-[#FEE2E2] text-[#B91C1C]",
+      critical: "bg-[#FCE7F3] text-[#9D174D]"
+    };
+
+    const scoreLevel = (score) => {
+      const s = Number(score || 0);
+      if (s >= 80) return "critical";
+      if (s >= 60) return "high";
+      if (s >= 30) return "medium";
+      return "low";
+    };
+
+    const renderKpis = (items) => {
+      const totalEl = document.querySelector("[data-kpi-total]");
+      const topEl = document.querySelector("[data-kpi-top]");
+      const pendingEl = document.querySelector("[data-kpi-pending]");
+      const reviewedEl = document.querySelector("[data-kpi-reviewed]");
+
+      // ✅ nuevos KPIs
+      const asnEl = document.querySelector("[data-kpi-asn]");
+      const countryEl = document.querySelector("[data-kpi-country]");
+
+      if (totalEl) totalEl.textContent = String(items.length);
+
+      if (topEl) {
+        if (!items.length) topEl.textContent = "—";
+        else {
+          const top = items.slice().sort((a, b) => (Number(b.score_current || 0) - Number(a.score_current || 0)))[0];
+          const label = top ? `${top.entity_key} (${top.entity_type})` : "—";
+          topEl.textContent = label;
+        }
+      }
+
+      const pendingCount = items.filter((e) => (e.state || "open") === "open").length;
+      const reviewedCount = items.filter((e) => (e.state || "open") === "closed").length;
+      if (pendingEl) pendingEl.textContent = String(pendingCount);
+      if (reviewedEl) reviewedEl.textContent = String(reviewedCount);
+
+      // ✅ ASN / país más frecuente usando SOLO entidades IP (con enriquecimiento en attrs)
+      const ipItems = items.filter((e) => isIpEntity(e));
+      if (asnEl) {
+        if (!ipItems.length) asnEl.textContent = "—";
+        else {
+          const mf = mostFrequent(ipItems.map((e) => getIpAsnLabel(e)));
+          asnEl.textContent = mf ? `${mf.label} (${mf.count})` : "—";
+        }
+      }
+
+      if (countryEl) {
+        if (!ipItems.length) countryEl.textContent = "—";
+        else {
+          const mf = mostFrequent(ipItems.map((e) => getIpCountryLabel(e)));
+          countryEl.textContent = mf ? `${mf.label} (${mf.count})` : "—";
+        }
+      }
+    };
+
+    const renderTable = (pageItems) => {
+      if (!tbody) return;
+      tbody.innerHTML = "";
+
+      if (!pageItems.length) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 8;
+        td.className = "py-6 text-center text-[11px] text-[#9CA3AF]";
+        td.textContent = "Sin entidades en este periodo.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+
+      pageItems.forEach((e) => {
+        const key = e.entity_key;
+        const type = e.entity_type || "—";
+        const score = Number(e.score_current || 0);
+        const scope = e.scope || "local";
+        const level = entityLevelFromSeverity(e.severity);
+        const servers = getServers(e);
+        const serversTxt = servers.length ? servers.join(", ") : "—";
+
+        const tr = document.createElement("tr");
+        tr.className = "border-b border-[#F3F4F6]";
+
+        const tdKey = document.createElement("td");
+        tdKey.className = "py-4 px-3 text-left whitespace-nowrap font-medium text-[#111827]";
+        tdKey.textContent = key;
+
+        const tdType = document.createElement("td");
+        tdType.className = "py-4 px-3 text-center text-[11px]";
+        tdType.textContent = type;
+
+        const tdScore = document.createElement("td");
+        tdScore.className = "py-4 px-3 text-center";
+        const scoreBadge = document.createElement("span");
+        const sLvl = scoreLevel(score);
+        scoreBadge.className =
+          "inline-flex items-center justify-center px-3 py-1 rounded-full text-[11px] font-medium " +
+          (SCORE_BADGE_CLASSES[sLvl] || SCORE_BADGE_CLASSES.low);
+        scoreBadge.textContent = `${score}/100`;
+        tdScore.appendChild(scoreBadge);
+
+        const tdSev = document.createElement("td");
+        tdSev.className = "py-4 px-3 text-center";
+        const sevBadge = document.createElement("span");
+        sevBadge.className =
+          "inline-flex items-center justify-center px-3 py-1 rounded-full text-[12px] font-medium " +
+          (SEVERITY_BADGE_CLASSES[level] || SEVERITY_BADGE_CLASSES.info);
+        sevBadge.textContent = SEVERITY_LABEL[level] || "Info";
+        tdSev.appendChild(sevBadge);
+
+        const tdScope = document.createElement("td");
+        tdScope.className = "py-4 px-3 text-center text-[11px]";
+        tdScope.textContent = scope;
+
+        const tdLast = document.createElement("td");
+        tdLast.className = "py-4 px-3 text-center text-[11px] whitespace-nowrap";
+        tdLast.textContent = fmtDate(e.last_seen_at);
+
+        const tdServers = document.createElement("td");
+        tdServers.className = "py-4 px-3 text-center text-[11px] max-w-[260px] truncate";
+        tdServers.title = serversTxt;
+        tdServers.textContent = serversTxt;
+
+        const tdAction = document.createElement("td");
+        tdAction.className = "py-4 px-3 text-center relative";
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "inline-flex items-center justify-center h-6 w-6 rounded-full hover:bg-[#F3F4F6]";
+        btn.setAttribute("aria-label", "Acciones");
+        btn.dataset.actionTrigger = "row";
+
+        const img = document.createElement("img");
+        img.src = "/svg/accion.svg";
+        img.alt = "Acciones";
+        img.className = "h-3 w-3";
+        img.loading = "lazy";
+        btn.appendChild(img);
+
+        const canCsf = isIpEntity(e);
+
+        const menu = document.createElement("div");
+        menu.className =
+          "hidden absolute right-3 top-9 w-56 rounded-lg bg-white border border-[#E5E7EB] shadow-lg text-xs text-left z-50";
+        menu.dataset.actionMenu = "row";
+        menu.innerHTML = `
+          <button type="button" class="w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB]"
+            data-menu-action="detail"
+            data-entity-id="${e.id}"
+            data-entity-key="${String(key)}"
+            data-entity-type="${String(type)}">
+            Ver alertas (detalle)
+          </button>
+
+          <button type="button" class="w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB]"
+            data-menu-action="review"
+            data-entity-id="${e.id}"
+            data-entity-key="${String(key)}"
+            data-entity-type="${String(type)}">
+            Marcar como revisada (Entity)
+          </button>
+
+          <div class="my-1 border-t border-[#E5E7EB]"></div>
+
+          <button type="button" class="w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB]"
+            data-menu-action="copy-entity"
+            data-entity-key="${String(key)}">
+            Copiar entidad
+          </button>
+
+          ${canCsf ? `
+          <button type="button" class="w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB]"
+            data-menu-action="copy-csf"
+            data-entity-key="${String(key)}">
+            Comando CSF (csf -d IP)
+          </button>
+          ` : ""}
+        `;
+
+        tdAction.append(btn, menu);
+        tr.append(tdKey, tdType, tdScore, tdSev, tdScope, tdLast, tdServers, tdAction);
+        tbody.appendChild(tr);
+      });
+    };
+
+    const pageWindow = (current, total) => {
+      const out = [];
+      const add = (x) => out.push(x);
+      const pushRange = (a, b) => { for (let i = a; i <= b; i++) add(i); };
+      if (total <= 9) { pushRange(1, total); return out; }
+      add(1);
+      const left = Math.max(2, current - 2);
+      const right = Math.min(total - 1, current + 2);
+      if (left > 2) add("…");
+      pushRange(left, right);
+      if (right < total - 1) add("…");
+      add(total);
+      return out;
+    };
+
+    const renderPagination = () => {
+      if (!pagination) return;
+      pagination.innerHTML = "";
+      const items = pageWindow(state.page, state.pages);
+
+      items.forEach((x) => {
+        if (x === "…") {
+          const span = document.createElement("span");
+          span.className = "px-2 text-[12px] text-[#6B7280]";
+          span.textContent = "…";
+          pagination.appendChild(span);
+          return;
+        }
+        const n = Number(x);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className =
+          "min-w-[34px] px-2 py-1.5 rounded-full border text-[12px] " +
+          (n === state.page
+            ? "border-[#111827] text-[#111827]"
+            : "border-[#E5E7EB] text-[#374151] hover:bg-[#F3F4F6]");
+        btn.textContent = String(n);
+        btn.addEventListener("click", () => { state.page = n; render(); });
+        pagination.appendChild(btn);
+      });
+
+      if (prevBtn) prevBtn.disabled = state.page <= 1;
+      if (nextBtn) nextBtn.disabled = state.page >= state.pages;
+    };
+
+    // ---- Local filters (fallback) ----
+    const filterByDaysLocal = (items) => {
+      if (activeFilters.dateRange === "custom" && (activeFilters.rangeFrom || activeFilters.rangeTo)) {
+        const from = activeFilters.rangeFrom ? new Date(activeFilters.rangeFrom).getTime() : null;
+        const to = activeFilters.rangeTo ? new Date(activeFilters.rangeTo).getTime() : null;
+        return items.filter((e) => {
+          if (!e.last_seen_at) return true;
+          const t = new Date(e.last_seen_at).getTime();
+          if (Number.isNaN(t)) return true;
+          if (from !== null && t < from) return false;
+          if (to !== null && t > to) return false;
+          return true;
+        });
+      }
+
+      let days = 30;
+      if (activeFilters.dateRange === "1d") days = 1;
+      else if (activeFilters.dateRange === "7d") days = 7;
+      else if (activeFilters.dateRange === "30d") days = 30;
+
+      const since = Date.now() - days * 24 * 60 * 60 * 1000;
+      return items.filter((e) => {
+        if (!e.last_seen_at) return true;
+        const d = new Date(e.last_seen_at).getTime();
+        if (Number.isNaN(d)) return true;
+        return d >= since;
+      });
+    };
+
+    const filterBySeverityLocal = (items) => {
+      const sev = (activeFilters.severity || "all").toLowerCase().trim();
+      if (sev === "all") return items;
+
+      if (sev === "high") {
+        return items.filter((e) => ["critical", "high"].includes(String(e.severity || "").toLowerCase()));
+      }
+      if (sev === "medium") {
+        return items.filter((e) => String(e.severity || "").toLowerCase() === "medium");
+      }
+      if (sev === "low") {
+        return items.filter((e) => String(e.severity || "").toLowerCase() === "low");
+      }
+      if (sev === "info") {
+        return items.filter((e) => ["clean", ""].includes(String(e.severity || "").toLowerCase()));
+      }
+      return items;
+    };
+
+    const filterByServerLocal = (items) => {
+      const serverFilter = activeFilters.server || "all";
+      if (!serverFilter || serverFilter === "all") return items;
+
+      return items.filter((e) => {
+        const servers = getServers(e);
+        if (!servers.length) return true; // no desaparezcas data si no hay servers
+        return servers.includes(serverFilter);
+      });
+    };
+
+    const render = () => {
+      let filtered = allEntities.slice();
+
+      if (activeFilters.entityStatus !== "all") {
+        filtered = filtered.filter((e) => (e.state || "open") === activeFilters.entityStatus);
+      }
+
+      // fallback local (por si el backend te devuelve todo)
+      filtered = filterByDaysLocal(filtered);
+      filtered = filterBySeverityLocal(filtered);
+      filtered = filterByServerLocal(filtered);
+
+      filtered.sort((a, b) => {
+        const sa = Number(a.score_current || 0);
+        const sb = Number(b.score_current || 0);
+        if (sb !== sa) return sb - sa;
+        const da = a.last_seen_at ? new Date(a.last_seen_at).getTime() : 0;
+        const db = b.last_seen_at ? new Date(b.last_seen_at).getTime() : 0;
+        return db - da;
+      });
+
+      renderKpis(filtered);
+
+      state.total = filtered.length;
+      state.pages = Math.max(1, Math.ceil(state.total / LIMIT));
+      state.page = Math.min(state.page, state.pages);
+
+      const start = (state.page - 1) * LIMIT;
+      const pageItems = filtered.slice(start, start + LIMIT);
+
+      renderTable(pageItems);
+      renderPagination();
+    };
+
+    const dateRangeToDays = (dateRange) => {
+      const r = String(dateRange || "7d").toLowerCase();
+      if (r === "1d") return 1;
+      if (r === "7d") return 7;
+      if (r === "30d" || r === "month") return 30;
+      return 30;
+    };
+
+    function buildEntityQueryParams() {
+      const params = new URLSearchParams();
+      params.set("limit", "1000");
+      params.set("offset", "0");
+
+      // ✅ YA NO FILTRAMOS entity_type => trae todo
+
+      const st = activeFilters.entityStatus || "all";
+      params.set("state", st === "all" ? "all" : st);
+
+      if (INCIDENT_ID && String(INCIDENT_ID).trim() !== "") {
+        params.set("incident_id", String(INCIDENT_ID));
+      }
+
+      const server = activeFilters.server || "all";
+      if (server && server !== "all") params.set("server", server);
+
+      const sev = activeFilters.severity || "all";
+      if (sev && sev !== "all") params.set("severity", sev);
+
+      if (activeFilters.dateRange === "custom") {
+        if (activeFilters.rangeFrom) params.set("from", String(activeFilters.rangeFrom));
+        if (activeFilters.rangeTo) params.set("to", String(activeFilters.rangeTo));
+      } else {
+        params.set("days", String(dateRangeToDays(activeFilters.dateRange)));
+      }
+
+      return params;
+    }
+
+    async function loadEntitiesFromApi() {
+      const token = getToken();
+      if (!token) { window.location.href = "/login"; return; }
+
+      const params = buildEntityQueryParams();
+
+      try {
+        const res = await fetch(`${API_BASE}/entities?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        });
+
+        if (!res.ok) { console.error("Error Entities:", res.status, await res.text()); return; }
+
+        const data = await res.json();
+        allEntities = Array.isArray(data.items) ? data.items : [];
+        state.page = 1;
+        render();
+      } catch (err) {
+        console.error("Error de red Entities:", err);
+      }
+    }
+
+    // ---- Modal alertas relacionadas (usa /alerts) ----
+    function closeEntityModal() { entityModalBackdrop?.classList.add("hidden"); }
+
+    function renderAlertsSummary(items) {
+      if (!entityModalSummary) return;
+      const total = items.length;
+      const servers = new Set();
+      let first = null;
+      let last = null;
+
+      items.forEach((al) => {
+        if (al.server) servers.add(al.server);
+        if (al.datetime) {
+          const d = new Date(al.datetime);
+          if (!first || d < first) first = d;
+          if (!last || d > last) last = d;
+        }
+      });
+
+      const fmt = (d) => d ? d.toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" }) : "—";
+
+      entityModalSummary.innerHTML = `
+        <div><span class="font-semibold text-[#111827]">${total}</span> alertas</div>
+        <div><span class="font-semibold text-[#111827]">${servers.size}</span> servidores</div>
+        <div>De <span class="font-semibold text-[#111827]">${fmt(first)}</span> a <span class="font-semibold text-[#111827]">${fmt(last)}</span></div>
+      `;
+    }
+
+    function renderAlertsList(items) {
+      if (!entityModalBody) return;
+
+      const container = document.createElement("div");
+      container.className = "space-y-3";
+
+      items.forEach((al) => {
+        const card = document.createElement("div");
+        card.className = "rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-2";
+
+        const headerBtn = document.createElement("button");
+        headerBtn.type = "button";
+        headerBtn.className = "w-full flex items-center justify-between gap-2 text-[11px] text-[#4B5563]";
+        headerBtn.dataset.alertToggle = String(al.id);
+
+        const left = document.createElement("div");
+        left.className = "flex flex-col items-start gap-0.5 text-left";
+
+        const line1 = document.createElement("div");
+        line1.className = "flex flex-wrap items-center gap-2";
+        const dtSpan = document.createElement("span");
+        dtSpan.className = "text-[11px] text-[#6B7280]";
+        dtSpan.textContent = al.datetime || "—";
+        const serverSpan = document.createElement("span");
+        serverSpan.className = "text-[11px] font-medium text-[#111827]";
+        serverSpan.textContent = al.server || "";
+        line1.append(dtSpan, serverSpan);
+
+        const line2 = document.createElement("div");
+        line2.className = "flex flex-wrap items-center gap-2";
+        const ruleText = document.createElement("span");
+        ruleText.className = "text-[11px]";
+        ruleText.innerHTML = `<span class="font-semibold text-[#111827]">${al.type || "—"}</span>`;
+
+        const sevBadge = document.createElement("span");
+        let sevClass = "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] border border-[#E5E7EB]";
+        if (al.level === "high") sevClass += " bg-[#FEE2E2] text-[#B91C1C] border-none";
+        else if (al.level === "medium") sevClass += " bg-[#FEF3C7] text-[#92400E] border-none";
+        else if (al.level === "low") sevClass += " bg-[#DBEAFE] text-[#1D4ED8] border-none";
+        else sevClass += " bg-[#E5E7EB] text-[#374151] border-none";
+        sevBadge.className = sevClass;
+        sevBadge.textContent = al.severityLabel || "";
+
+        line2.append(ruleText, sevBadge);
+
+        const msgPreview = document.createElement("div");
+        msgPreview.className = "text-[11px] text-[#6B7280] line-clamp-2";
+        msgPreview.textContent = al.description || "";
+        left.append(line1, line2, msgPreview);
+
+        const right = document.createElement("div");
+        right.className = "flex items-center gap-2";
+        const stSpan = document.createElement("span");
+        stSpan.className = "text-[10px] uppercase tracking-wide text-[#9CA3AF]";
+        stSpan.textContent = (al.status === "resolved") ? "Resuelto" : (al.status === "false_positive") ? "Falso positivo" : "Pendiente";
+
+        const chevron = document.createElement("span");
+        chevron.className = "ml-1 text-xs text-[#9CA3AF] transition-transform duration-150";
+        chevron.dataset.alertChevron = String(al.id);
+        chevron.textContent = "▸";
+
+        right.append(stSpan, chevron);
+        headerBtn.append(left, right);
+
+        const details = document.createElement("div");
+        details.className = "mt-2 pt-2 border-t border-dashed border-[#E5E7EB] hidden";
+        details.dataset.alertDetails = String(al.id);
+
+        const logContainer = document.createElement("div");
+        logContainer.className = "mt-3";
+        logContainer.dataset.logContainer = String(al.id);
+        logContainer.innerHTML = `
+          <div class="font-semibold text-[11px] text-[#111827] mb-1">Fragmento (raw)</div>
+          <p class="text-[11px] text-[#6B7280]">Se cargará al desplegar.</p>
+        `;
+
+        details.append(logContainer);
+        card.append(headerBtn, details);
+        container.appendChild(card);
+      });
+
+      entityModalBody.innerHTML = "";
+      entityModalBody.appendChild(container);
+    }
+
+    async function loadAlertRaw(alertId, detailsEl) {
+      if (!detailsEl || detailsEl.dataset.logLoaded === "1") return;
+
+      const token = getToken();
+      if (!token) return;
+
+      const logContainer = detailsEl.querySelector(`[data-log-container="${alertId}"]`);
+      if (!logContainer) return;
+
+      logContainer.innerHTML = `
+        <div class="font-semibold text-[11px] text-[#111827] mb-1">Fragmento (raw)</div>
+        <p class="text-[11px] text-[#6B7280]">Cargando...</p>
+      `;
+
+      try {
+        const res = await fetch(`${API_BASE}/alerts/${encodeURIComponent(alertId)}`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        });
+        if (!res.ok) {
+          logContainer.innerHTML = `
+            <div class="font-semibold text-[11px] text-[#111827] mb-1">Fragmento (raw)</div>
+            <p class="text-[11px] text-red-600">No se pudo cargar (error ${res.status}).</p>
+          `;
+          return;
+        }
+        const data = await res.json();
+        const raw = data.raw_log_snippet || "(Sin fragmento)";
+
+        logContainer.innerHTML = `<div class="font-semibold text-[11px] text-[#111827] mb-1">Fragmento (raw)</div>`;
+        const pre = document.createElement("pre");
+        pre.className = "mt-1 text-[11px] bg-[#111827] text-[#E5E7EB] rounded-md px-3 py-2 overflow-x-auto whitespace-pre-wrap";
+        pre.textContent = String(raw);
+        logContainer.appendChild(pre);
+
+        detailsEl.dataset.logLoaded = "1";
+      } catch (err) {
+        console.error("Error raw:", err);
+      }
+    }
+
+    let lastDetailEntityKey = "";
+    let lastDetailEntityType = "";
+    let lastDetailEntityId = 0;
+
+    async function openEntityAlertsModal(entityKey, entityType, entityId) {
+      const token = getToken();
+      if (!token) { window.location.href = "/login"; return; }
+      if (!entityModalBackdrop || !entityModalBody || !entityModalTitle || !entityModalSummary) return;
+
+      lastDetailEntityKey = String(entityKey || "");
+      lastDetailEntityType = String(entityType || "");
+      lastDetailEntityId = Number(entityId || 0);
+
+      entityModalTitle.textContent = `${lastDetailEntityKey} (${lastDetailEntityType || "entity"})`;
+      entityModalBody.innerHTML = '<p class="text-xs text-[#6B7280]">Cargando alertas...</p>';
+      entityModalSummary.innerHTML = "";
+      entityModalBackdrop.classList.remove("hidden");
+
+      const params = new URLSearchParams();
+      params.set("limit", "200");
+      params.set("offset", "0");
+      params.set("days", String(dateRangeToDays(activeFilters.dateRange)));
+      params.set("severity", "all");
+      params.set("status", "all");
+
+      // ✅ para IP usamos ip=; para otras entidades usamos q=
+      if (String(lastDetailEntityType).toLowerCase().trim() === "ip") {
+        params.set("ip", lastDetailEntityKey);
+      } else {
+        params.set("q", lastDetailEntityKey);
+      }
+
+      const serverFilter = activeFilters.server || "all";
+      if (serverFilter && serverFilter !== "all") params.set("server", serverFilter);
+
+      try {
+        const res = await fetch(`${API_BASE}/alerts?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        });
+        if (!res.ok) {
+          entityModalBody.innerHTML = '<p class="text-xs text-red-600">No se pudieron cargar las alertas.</p>';
+          return;
+        }
+        const data = await res.json();
+        const items = Array.isArray(data.items) ? data.items : [];
+        if (!items.length) {
+          entityModalBody.innerHTML = '<p class="text-xs text-[#6B7280]">Sin alertas en el rango seleccionado.</p>';
+          return;
+        }
+        renderAlertsSummary(items);
+        renderAlertsList(items);
+      } catch (err) {
+        console.error("Error modal:", err);
+      }
+    }
+
+    // ---- Modal revisión ----
+    let reviewEntityKey = "";
+    let reviewEntityType = "";
+    let reviewEntityId = 0;
+
+    const getReviewMode = () => {
+      const checked = Array.from(reviewModes).find((x) => x instanceof HTMLInputElement && x.checked);
+      return checked instanceof HTMLInputElement ? checked.value : "cascade";
+    };
+
+    const updateReviewModeUI = () => {
+      const mode = getReviewMode();
+      if (cascadePanel) cascadePanel.classList.toggle("hidden", mode !== "cascade");
+      if (separatePanel) separatePanel.classList.toggle("hidden", mode !== "separate");
+    };
+
+    const openReviewModal = (entityKey, entityType, entityId) => {
+      reviewEntityKey = String(entityKey || "");
+      reviewEntityType = String(entityType || "");
+      reviewEntityId = Number(entityId || 0);
+
+      if (reviewEntityTitle) reviewEntityTitle.textContent = `${reviewEntityKey} (${reviewEntityType || "entity"})`;
+      if (reviewMsg) reviewMsg.textContent = "";
+
+      reviewBackdrop?.classList.remove("hidden");
+      updateReviewModeUI();
+    };
+
+    const closeReviewModal = () => {
+      reviewBackdrop?.classList.add("hidden");
+      reviewEntityKey = "";
+      reviewEntityType = "";
+      reviewEntityId = 0;
+    };
+
+    const goToAlertsFiltered = () => {
+      if (!reviewEntityKey) return;
+
+      const qs = new URLSearchParams();
+
+      if (String(reviewEntityType).toLowerCase().trim() === "ip") qs.set("ip", reviewEntityKey);
+      else qs.set("q", reviewEntityKey);
+
+      const serverFilter = activeFilters.server || "all";
+      if (serverFilter && serverFilter !== "all") qs.set("server", serverFilter);
+
+      qs.set("days", String(dateRangeToDays(activeFilters.dateRange)));
+      qs.set("status", "open");
+      window.location.href = `/dashboard/alertas?${qs.toString()}`;
+    };
+
+    async function patchEntityStateClosed() {
+      if (!reviewEntityId) return;
+      const token = getToken();
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE}/entities/${encodeURIComponent(String(reviewEntityId))}/state`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ state: "closed" }),
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+    }
+
+    async function cascadeAlertsStatus() {
+      const token = getToken();
+      if (!token) return;
+
+      const serverFilter = activeFilters.server || "all";
+      const days = dateRangeToDays(activeFilters.dateRange);
+
+      const status = reviewAlertsStatus instanceof HTMLSelectElement ? reviewAlertsStatus.value : "resolved";
+      const disposition = reviewDisposition instanceof HTMLSelectElement ? reviewDisposition.value : "";
+      const note = reviewNote instanceof HTMLTextAreaElement ? reviewNote.value : "";
+
+      // ⚠️ Importante:
+      // - Para IP usamos el campo ip (como ya lo tenías).
+      // - Para otras entidades mandamos q. Si tu backend de bulk NO acepta q, hay que ajustarlo.
+      const isIp = String(reviewEntityType).toLowerCase().trim() === "ip";
+
+      const payload = {
+        select_all: true,
+        ids: null,
+        server: (serverFilter && serverFilter !== "all") ? serverFilter : null,
+        incident_id: null,
+        ip: isIp ? reviewEntityKey : null,
+        q: !isIp ? reviewEntityKey : null,
+        days,
+        severity: "all",
+        status_filter: "all",
+        status,
+        disposition: disposition || null,
+        note: note || null,
+        category: null,
+      };
+
+      const res = await fetch(`${API_BASE}/alerts/status/bulk`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+    }
+
+    const saveReview = async () => {
+      if (!reviewEntityKey || !reviewEntityId) return;
+
+      const mode = getReviewMode();
+      if (mode === "separate") {
+        goToAlertsFiltered();
+        return;
+      }
+
+      if (reviewMsg) reviewMsg.textContent = "Guardando...";
+
+      try {
+        await patchEntityStateClosed();
+        await cascadeAlertsStatus();
+        if (reviewMsg) reviewMsg.textContent = "Guardado";
+        await loadEntitiesFromApi();
+        closeReviewModal();
+      } catch (err) {
+        console.error(err);
+        if (reviewMsg) reviewMsg.textContent = "Error al guardar.";
+      }
+    };
+
+    const closeAllActionMenus = () => {
+      document.querySelectorAll('[data-action-menu="row"]').forEach((m) => m.classList.add("hidden"));
+    };
+
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      const toggleBtn = target.closest("[data-alert-toggle]");
+      if (toggleBtn && entityModalBody) {
+        const alertId = toggleBtn.dataset.alertToggle;
+        const details = entityModalBody.querySelector(`[data-alert-details="${alertId}"]`);
+        const chevron = toggleBtn.querySelector(`[data-alert-chevron="${alertId}"]`);
+        if (!details) return;
+
+        const isHidden = details.classList.contains("hidden");
+        if (isHidden) {
+          details.classList.remove("hidden");
+          if (chevron) chevron.style.transform = "rotate(90deg)";
+          void loadAlertRaw(alertId, details);
+        } else {
+          details.classList.add("hidden");
+          if (chevron) chevron.style.transform = "rotate(0deg)";
+        }
+        return;
+      }
+
+      const actionBtn = target.closest("[data-menu-action]");
+      if (actionBtn) {
+        const action = actionBtn.dataset.menuAction;
+        const entityKey = actionBtn.dataset.entityKey || "";
+        const entityType = actionBtn.dataset.entityType || "";
+        const entityId = actionBtn.dataset.entityId || "0";
+
+        if (action === "copy-entity" && entityKey) navigator.clipboard?.writeText(entityKey).catch(() => {});
+        else if (action === "copy-csf" && entityKey) navigator.clipboard?.writeText(`csf -d ${entityKey} "Bloqueo desde SentinelX"`).catch(() => {});
+        else if (action === "detail" && entityKey) void openEntityAlertsModal(entityKey, entityType, entityId);
+        else if (action === "review" && entityKey) { closeAllActionMenus(); closeEntityModal(); openReviewModal(entityKey, entityType, entityId); }
+
+        closeAllActionMenus();
+        return;
+      }
+
+      const trigger = target.closest('[data-action-trigger="row"]');
+      if (trigger) {
+        event.stopPropagation();
+        const cell = trigger.parentElement;
+        const menu = cell?.querySelector('[data-action-menu="row"]');
+        if (!menu) return;
+        const isHidden = menu.classList.contains("hidden");
+        closeAllActionMenus();
+        if (isHidden) menu.classList.remove("hidden");
+        return;
+      }
+
+      closeAllActionMenus();
+    });
+
+    entityModalCloseBtn?.forEach((b) => b.addEventListener("click", () => closeEntityModal()));
+    entityModalBackdrop?.addEventListener("click", (e) => { if (e.target === entityModalBackdrop) closeEntityModal(); });
+
+    entityModalMarkReviewedBtn?.addEventListener("click", () => {
+      if (!lastDetailEntityKey || !lastDetailEntityId) return;
+      closeEntityModal();
+      openReviewModal(lastDetailEntityKey, lastDetailEntityType, lastDetailEntityId);
+    });
+
+    reviewClose?.addEventListener("click", () => closeReviewModal());
+    reviewCancel?.addEventListener("click", () => closeReviewModal());
+    reviewSave?.addEventListener("click", () => saveReview());
+    btnOpenAlerts?.addEventListener("click", () => goToAlertsFiltered());
+
+    reviewModes.forEach((r) => r.addEventListener("change", () => updateReviewModeUI()));
+
+    chipsHost?.addEventListener("click", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      const btn = t.closest("button[data-entity-status]");
+      if (!btn) return;
+      const v = btn.getAttribute("data-entity-status") || "open";
+      activeFilters.entityStatus = v;
+      setChipActive(v);
+      state.page = 1;
+      void loadEntitiesFromApi();
+    });
+
+    prevBtn?.addEventListener("click", () => { if (state.page > 1) { state.page -= 1; render(); } });
+    nextBtn?.addEventListener("click", () => { if (state.page < state.pages) { state.page += 1; render(); } });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeAllActionMenus();
+        closeEntityModal();
+        closeReviewModal();
+      }
+    });
+
+    // ✅ Normalizador: aguanta distintos payloads/event names desde HeaderBar
+    const normalizeFiltersDetail = (detail) => {
+      const d = (detail && typeof detail === "object") ? detail : {};
+
+      const server =
+        d.server ?? d.serverFilter ?? d.server_value ?? d.serverValue ?? activeFilters.server;
+
+      const dateRange =
+        d.dateRange ?? d.range ?? d.date ?? d.date_filter ?? d.dateFilter ?? activeFilters.dateRange;
+
+      const severity =
+        d.severity ?? d.severityFilter ?? d.severity_value ?? d.severityValue ?? activeFilters.severity;
+
+      const rangeFrom =
+        d.rangeFrom ?? d.from ?? d.dateFrom ?? d.start ?? activeFilters.rangeFrom;
+
+      const rangeTo =
+        d.rangeTo ?? d.to ?? d.dateTo ?? d.end ?? activeFilters.rangeTo;
+
+      let finalDateRange = String(dateRange || "7d");
+      const hasCustom = !!(rangeFrom || rangeTo) && (finalDateRange === "custom" || d.custom === true);
+      if (hasCustom) finalDateRange = "custom";
+
+      return {
+        server: server ?? "all",
+        dateRange: finalDateRange,
+        severity: severity ?? "all",
+        rangeFrom: rangeFrom ?? null,
+        rangeTo: rangeTo ?? null,
+      };
+    };
+
+    const onFiltersChanged = (event) => {
+      const detail = event?.detail || {};
+      const normalized = normalizeFiltersDetail(detail);
+
+      activeFilters = { ...activeFilters, ...normalized };
+      state.page = 1;
+      void loadEntitiesFromApi();
+    };
+
+    window.addEventListener("sentinelx:filters-changed", onFiltersChanged);
+    window.addEventListener("filters-changed", onFiltersChanged);
+    window.addEventListener("sentinelx:filter-changed", onFiltersChanged);
+
+    setChipActive(activeFilters.entityStatus);
+    if (tbody) void loadEntitiesFromApi();
+  </script>
+</DashboardLayout>

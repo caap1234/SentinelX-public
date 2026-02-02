@@ -1,0 +1,1259 @@
+---
+import DashboardLayout from "../../layouts/DashboardLayout.astro";
+import HeaderBar from "../../components/dashboard/HeaderBar.astro";
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000";
+---
+
+<DashboardLayout pageTitle="SentinelX SIEM – Alertas">
+  <HeaderBar
+    title="Alertas"
+    subtitle="Listado global de alertas (filtrable y paginado)."
+    showFilters={false}
+  />
+
+  <section class="flex-1 px-8 py-6 space-y-6">
+    <!-- Barra de filtros -->
+    <div class="rounded-xl bg-white border border-[#E5E7EB] px-6 py-4 shadow-sm">
+      <div class="grid grid-cols-1 md:grid-cols-7 gap-3 items-end">
+        <!-- Servidor (dropdown con búsqueda estilo Cargar Logs) -->
+        <div class="md:col-span-1">
+          <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">
+            Servidor
+          </label>
+
+          <div class="relative" data-server-select>
+            <!-- select real oculto -->
+            <select data-filter-server class="hidden">
+              <option value="">Todos</option>
+            </select>
+
+            <!-- Trigger -->
+            <button
+              type="button"
+              data-server-trigger
+              class="relative w-full h-9 rounded-full border border-[#D1D5DB] bg-white
+                    text-sm text-[#111827] px-4 pr-10 text-left
+                    focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+            >
+              <span data-server-label class="truncate">Todos</span>
+              <span class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-[10px] text-black">
+                ▼
+              </span>
+            </button>
+
+            <!-- Menu -->
+            <div
+              data-server-menu
+              class="hidden absolute left-0 mt-2 w-full rounded-lg bg-white border border-[#E5E7EB]
+                    shadow-lg z-30 overflow-hidden"
+            >
+              <div class="p-2 border-b border-[#E5E7EB] bg-white">
+                <input
+                  type="text"
+                  data-server-search
+                  placeholder="Buscar servidor..."
+                  class="w-full h-8 rounded-md border border-[#D1D5DB] px-2 text-[11px]
+                        focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+                />
+              </div>
+
+              <div class="max-h-56 overflow-auto py-1" data-server-options></div>
+
+              <div class="hidden px-4 py-3 text-[11px] text-[#6B7280]" data-server-empty>
+                Sin resultados
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">Severidad</label>
+          <select
+            class="w-full h-9 rounded-full border border-[#D1D5DB] bg-white text-sm text-[#111827] px-4 pr-8 appearance-none
+                  focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+            data-filter-severity
+          >
+            <option value="all">Todas</option>
+            <option value="high">Alta/Crítica</option>
+            <option value="medium">Media</option>
+            <option value="low">Baja</option>
+            <option value="info">Info</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">Estado</label>
+          <select
+            class="w-full h-9 rounded-full border border-[#D1D5DB] bg-white text-sm text-[#111827] px-4 pr-8 appearance-none
+                  focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+            data-filter-status
+          >
+            <option value="open">Pendiente</option>
+            <option value="resolved">Resuelto</option>
+            <option value="false_positive">Falso positivo</option>
+            <option value="all">Todos</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">Días</label>
+          <select
+            class="w-full h-9 rounded-full border border-[#D1D5DB] bg-white text-sm text-[#111827] px-4 pr-8 appearance-none
+                  focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+            data-filter-days
+          >
+            <option value="1">1</option>
+            <option value="7" selected>7</option>
+            <option value="30">30</option>
+            <option value="90">90</option>
+            <option value="365">365</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">Incidente (opcional)</label>
+          <input
+            class="w-full h-9 rounded-full border border-[#D1D5DB] bg-white text-sm text-[#111827] px-4
+                  focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+            placeholder="incident_id"
+            data-filter-incident
+          />
+        </div>
+
+        <div>
+          <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">IP (opcional)</label>
+          <input
+            class="w-full h-9 rounded-full border border-[#D1D5DB] bg-white text-sm text-[#111827] px-4
+                  focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+            placeholder="1.2.3.4"
+            data-filter-ip
+          />
+        </div>
+
+        <div class="md:col-span-1">
+          <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">Buscar (opcional)</label>
+          <input
+            class="w-full h-9 rounded-full border border-[#D1D5DB] bg-white text-sm text-[#111827] px-4
+                  focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+            placeholder="regla, texto, etc."
+            data-filter-q
+            disabled
+            title="(Opcional) agrega búsqueda cuando tu API lo soporte"
+          />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between mt-4">
+        <div class="text-[12px] text-[#6B7280]" data-results-summary> </div>
+
+        <div class="flex gap-2">
+          <a class="text-[12px] text-[#2563EB] hover:underline" href="/dashboard/incidentes">
+            ← Volver a incidentes
+          </a>
+
+          <button
+            class="inline-flex items-center px-4 py-2 rounded-full border border-[#E67E22] text-[12px] text-[#E67E22] bg-white
+                   hover:bg-[#E67E22] hover:text-white transition"
+            type="button"
+            data-apply
+          >
+            Aplicar
+          </button>
+
+          <button
+            class="inline-flex items-center px-4 py-2 rounded-full border border-[#E67E22] text-[12px] text-[#E67E22] bg-white
+                   hover:bg-[#E67E22] hover:text-white transition"
+            type="button"
+            data-reset
+          >
+            Limpiar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="rounded-xl bg-white border border-[#E5E7EB] px-8 py-5 shadow-sm">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-sm font-semibold text-[#111827]">Alertas</p>
+        <div class="text-[12px] text-[#6B7280]">
+          <span data-page-label>—</span>
+        </div>
+      </div>
+
+      <!-- Acciones masivas -->
+      <div
+        class="hidden mb-4 rounded-2xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3"
+        data-bulk-bar
+      >
+        <div class="flex flex-col gap-3">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div class="text-[12px] text-[#374151]">
+              <span class="font-semibold" data-selected-count>0</span> seleccionados
+              <span class="text-[#6B7280]" data-select-all-hint></span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                class="inline-flex items-center px-3 py-2 rounded-full border border-[#E67E22] text-[#E67E22] bg-white text-[12px]
+                       hover:bg-[#E67E22] hover:text-white transition"
+                data-select-all-filtered
+                title="Aplica a todos los resultados que coincidan con los filtros actuales"
+              >
+                Seleccionar todos los resultados filtrados
+              </button>
+
+              <button
+                type="button"
+                class="inline-flex items-center px-3 py-2 rounded-full border border-[#E67E22] text-[#E67E22] bg-white text-[12px]
+                       hover:bg-[#E67E22] hover:text-white transition"
+                data-clear-selection
+              >
+                Limpiar selección
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
+            <div class="md:col-span-3">
+              <select
+                class="w-full h-9 rounded-full border border-[#D1D5DB] bg-white text-sm text-[#111827] px-4 pr-8 appearance-none
+                      focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+                data-bulk-status
+              >
+                <option value="" selected>— Cambiar estado a —</option>
+                <option value="resolved">Resuelto</option>
+                <option value="false_positive">Falso positivo</option>
+                <option value="open">Pendiente</option>
+              </select>
+            </div>
+
+            <div class="md:col-span-3">
+              <select
+                class="w-full h-9 rounded-full border border-[#D1D5DB] bg-white text-sm text-[#111827] px-4 pr-8 appearance-none
+                      focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+                data-bulk-disposition
+              >
+                <option value="" selected>— Disposición (opcional) —</option>
+                <option value="informational">Informativo</option>
+                <option value="benign">Benigno</option>
+                <option value="true_positive">Positivo real</option>
+                <option value="mitigated">Mitigado</option>
+                <option value="needs_followup">Requiere seguimiento</option>
+              </select>
+            </div>
+
+            <div class="md:col-span-6">
+              <input
+                class="w-full h-9 rounded-full border border-[#D1D5DB] bg-white text-sm text-[#111827] px-4
+                       focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+                placeholder="Nota (opcional)"
+                data-bulk-note
+              />
+            </div>
+
+            <div class="md:col-span-12 flex justify-end">
+              <button
+                type="button"
+                class="inline-flex items-center px-5 py-2 rounded-full border border-[#E67E22] text-[#E67E22] bg-white text-[12px]
+                       hover:bg-[#E67E22] hover:text-white transition"
+                data-bulk-apply
+              >
+                Aplicar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-xs">
+          <thead>
+            <tr class="text-[#6B7280] border-b border-[#E5E7EB]">
+              <th class="py-3 px-3 text-left w-[36px]">
+                <input type="checkbox" data-check-all-page />
+              </th>
+              <th class="py-3 px-3 text-left">Fecha</th>
+              <th class="py-3 px-3 text-left">Severidad</th>
+              <th class="py-3 px-3 text-left">Estado</th>
+              <th class="py-3 px-3 text-left">Regla</th>
+              <th class="py-3 px-3 text-left">IP</th>
+              <th class="py-3 px-3 text-left">Servidor</th>
+              <th class="py-3 px-3 text-left">Mensaje</th>
+              <th class="py-3 px-3 text-right">Acción</th>
+            </tr>
+          </thead>
+          <tbody class="text-[#4B5563]" data-events-body></tbody>
+        </table>
+      </div>
+
+      <!-- Paginación -->
+      <div class="flex items-center justify-between mt-4">
+        <button
+          class="inline-flex items-center px-4 py-2 rounded-full border border-[#D1D5DB] text-[12px] text-[#374151] hover:bg-[#F3F4F6] disabled:opacity-50"
+          type="button"
+          data-prev
+        >
+          Anterior
+        </button>
+
+        <div class="flex flex-wrap gap-1 justify-center" data-pagination></div>
+
+        <button
+          class="inline-flex items-center px-4 py-2 rounded-full border border-[#D1D5DB] text-[12px] text-[#374151] hover:bg-[#F3F4F6] disabled:opacity-50"
+          type="button"
+          data-next
+        >
+          Siguiente
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal detalle -->
+  <div
+    id="event-modal"
+    class="hidden fixed left-0 top-0 z-[9999] w-screen h-screen bg-black/40 p-4 place-items-center"
+    style="display:none;"
+  >
+    <div class="w-full max-w-5xl max-h-[85vh] flex flex-col mx-auto translate-x-0 md:translate-x-6 lg:translate-x-10">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-h-[85vh] flex flex-col">
+        <div class="px-6 py-4 border-b border-[#E5E7EB] flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-[#111827]">Detalle de la alerta</h2>
+          <button type="button" class="text-[#6B7280] hover:text-[#111827] text-xl leading-none" data-event-close>×</button>
+        </div>
+
+        <div class="px-6 py-5 overflow-y-auto text-xs space-y-5">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <p class="text-[#9CA3AF] uppercase tracking-wide text-[10px]">Fecha</p>
+              <p class="text-[12px] font-medium" data-ev-ts>—</p>
+            </div>
+            <div>
+              <p class="text-[#9CA3AF] uppercase tracking-wide text-[10px]">Servidor</p>
+              <p class="text-[12px] font-medium" data-ev-server>—</p>
+            </div>
+            <div>
+              <p class="text-[#9CA3AF] uppercase tracking-wide text-[10px]">IP</p>
+              <p class="text-[12px] font-medium" data-ev-ip>—</p>
+            </div>
+
+            <div>
+              <p class="text-[#9CA3AF] uppercase tracking-wide text-[10px]">Regla</p>
+              <p class="text-[12px] font-medium" data-ev-rule>—</p>
+            </div>
+            <div>
+              <p class="text-[#9CA3AF] uppercase tracking-wide text-[10px]">Severidad</p>
+              <p class="text-[12px] font-medium" data-ev-sev>—</p>
+            </div>
+            <div>
+              <p class="text-[#9CA3AF] uppercase tracking-wide text-[10px]">Estado actual</p>
+              <p class="text-[12px] font-medium" data-ev-status>—</p>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-[#E5E7EB] bg-[#FAFAFB] p-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+              <div>
+                <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">Estado</label>
+                <select
+                  class="w-full h-9 rounded-full border border-[#D1D5DB] bg-white text-[12px] text-[#111827] px-4 pr-8 appearance-none
+                        focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+                  data-ev-status-select
+                >
+                  <option value="open">Pendiente</option>
+                  <option value="resolved">Resuelto</option>
+                  <option value="false_positive">Falso positivo</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">Disposición (opcional)</label>
+                <select
+                  class="w-full h-9 rounded-full border border-[#D1D5DB] bg-white text-[12px] text-[#111827] px-4 pr-8 appearance-none
+                        focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+                  data-ev-disposition
+                >
+                  <option value="">— Sin disposición —</option>
+                  <option value="informational">Informativo</option>
+                  <option value="benign">Benigno</option>
+                  <option value="true_positive">Positivo real</option>
+                  <option value="mitigated">Mitigado</option>
+                  <option value="needs_followup">Requiere seguimiento</option>
+                </select>
+              </div>
+
+              <div class="md:col-span-3">
+                <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">Nota (opcional)</label>
+                <textarea
+                  class="w-full min-h-[80px] rounded-2xl border border-[#D1D5DB] bg-white text-[12px] text-[#111827] px-4 py-3
+                        focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+                  placeholder="Escribe una nota de resolución / contexto (opcional)"
+                  data-ev-note
+                ></textarea>
+
+                <div class="mt-2 text-[11px] text-[#6B7280]" data-ev-status-msg></div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-[#9CA3AF] uppercase tracking-wide text-[10px] mb-1">Mensaje</p>
+            <p class="text-[12px]" data-ev-msg>—</p>
+          </div>
+
+          <div>
+            <p class="text-[#9CA3AF] uppercase tracking-wide text-[10px] mb-1">Evidencia</p>
+            <pre class="text-[11px] font-mono bg-[#111827] text-[#E5E7EB] rounded-xl p-4 max-h-72 overflow-y-auto whitespace-pre-wrap" data-ev-raw>—</pre>
+          </div>
+        </div>
+
+        <div class="px-6 py-3 border-t border-[#E5E7EB] flex items-center justify-end gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center px-4 py-2 rounded-full border border-[#E67E22] text-[12px] text-[#E67E22] bg-white
+                   hover:bg-[#E67E22] hover:text-white transition disabled:opacity-50"
+            data-ev-save
+          >
+            Guardar cambios
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex items-center px-4 py-2 rounded-full border border-[#D1D5DB] text-[12px] text-[#374151] hover:bg-[#F3F4F6]"
+            data-event-close
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" define:vars={{ API_BASE }}>
+    // @ts-ignore
+    const TOKEN = window.SENTINELX_TOKEN || null;
+    const LIMIT = 50;
+
+    const authHeaders = () =>
+      TOKEN
+        ? { Authorization: `Bearer ${TOKEN}`, Accept: "application/json", "Content-Type": "application/json" }
+        : { Accept: "application/json", "Content-Type": "application/json" };
+
+    const STATUS_LABEL = {
+      open: "Pendiente",
+      resolved: "Resuelto",
+      false_positive: "Falso positivo",
+      all: "Todos",
+    };
+
+    const STATUS_BADGE = {
+      open: "bg-[#FEF3C7] text-[#92400E]",
+      resolved: "bg-[#DCFCE7] text-[#166534]",
+      false_positive: "bg-[#E5E7EB] text-[#374151]",
+    };
+
+    const SEV_BADGE = {
+      high: "bg-[#FEE2E2] text-[#B91C1C]",
+      medium: "bg-[#FEF3C7] text-[#92400E]",
+      low: "bg-[#DBEAFE] text-[#1D4ED8]",
+      info: "bg-[#E5E7EB] text-[#374151]",
+    };
+
+    const $ = (sel) => document.querySelector(sel);
+
+    const tbody = $("[data-events-body]");
+    const pagination = $("[data-pagination]");
+    const prevBtn = $("[data-prev]");
+    const nextBtn = $("[data-next]");
+    const pageLabel = $("[data-page-label]");
+    const resultsSummary = $("[data-results-summary]");
+
+    // bulk UI
+    const bulkBar = $("[data-bulk-bar]");
+    const selectedCountEl = $("[data-selected-count]");
+    const selectAllHintEl = $("[data-select-all-hint]");
+    const bulkStatusSel = $("[data-bulk-status]");
+    const bulkDispositionSel = $("[data-bulk-disposition]");
+    const bulkNoteInput = $("[data-bulk-note]");
+    const bulkApplyBtn = $("[data-bulk-apply]");
+    const bulkSelectAllFilteredBtn = $("[data-select-all-filtered]");
+    const bulkClearBtn = $("[data-clear-selection]");
+    const checkAllPage = $("[data-check-all-page]");
+
+    // filtros base
+    const fSeverity = $("[data-filter-severity]");
+    const fStatus = $("[data-filter-status]");
+    const fDays = $("[data-filter-days]");
+    const fIncident = $("[data-filter-incident]");
+    const fIp = $("[data-filter-ip]");
+    const btnApply = $("[data-apply]");
+    const btnReset = $("[data-reset]");
+
+    // servidor custom
+    const serverSelectHost = document.querySelector("[data-server-select]");
+    const serverTrigger = serverSelectHost?.querySelector("[data-server-trigger]");
+    const serverMenu = serverSelectHost?.querySelector("[data-server-menu]");
+    const serverLabel = serverSelectHost?.querySelector("[data-server-label]");
+    const serverSearch = serverSelectHost?.querySelector("[data-server-search]");
+    const serverOptionsEl = serverSelectHost?.querySelector("[data-server-options]");
+    const serverEmptyEl = serverSelectHost?.querySelector("[data-server-empty]");
+    const serverSelect = document.querySelector("[data-filter-server]"); // select hidden
+
+    const modal = document.getElementById("event-modal");
+
+    let state = {
+      server: "",
+      severity: "all",
+      status: "open",
+      days: 7,
+      incident_id: "",
+      ip: "",
+      page: 1,
+      total: 0,
+      pages: 1,
+    };
+
+    /** @type {{id: string, label?: string}[]} */
+    let SERVER_LIST = [];
+
+    /** @type {Set<string>} */
+    const selectedIds = new Set();
+    let selectAllFiltered = false;
+
+    const fmtLocal = (iso) => {
+      try {
+        if (!iso) return "—";
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return String(iso);
+        return d.toLocaleString();
+      } catch {
+        return String(iso || "—");
+      }
+    };
+
+    // URL: soporte incidentes -> alertas
+    const readUrlState = () => {
+      const u = new URL(window.location.href);
+      const p = u.searchParams;
+
+      state.server = p.get("server") || "";
+      state.severity = p.get("severity") || "all";
+      state.status = p.get("status") || "open";
+      state.days = Number(p.get("days") || "7");
+      state.incident_id = p.get("incident_id") || "";
+      state.ip = p.get("ip") || "";
+      state.page = Math.max(1, Number(p.get("page") || "1"));
+
+      // Si viene focus_alert_id, lo guardamos en window para abrirlo luego
+      window.__FOCUS_ALERT_ID__ = p.get("focus_alert_id") || "";
+    };
+
+    const syncInputs = () => {
+      if (fSeverity) fSeverity.value = state.severity || "all";
+      if (fStatus) fStatus.value = state.status || "open";
+      if (fDays) fDays.value = String(state.days || 7);
+      if (fIncident) fIncident.value = state.incident_id || "";
+      if (fIp) fIp.value = state.ip || "";
+    };
+
+    const writeUrlState = () => {
+      const u = new URL(window.location.href);
+      const p = u.searchParams;
+
+      p.set("page", String(state.page));
+      p.set("days", String(state.days));
+      p.set("severity", state.severity || "all");
+      p.set("status", state.status || "open");
+
+      if (state.server) p.set("server", state.server);
+      else p.delete("server");
+
+      if (state.incident_id) p.set("incident_id", state.incident_id);
+      else p.delete("incident_id");
+
+      if (state.ip) p.set("ip", state.ip);
+      else p.delete("ip");
+
+      // NO persistimos focus_alert_id en cambios normales
+      p.delete("focus_alert_id");
+
+      window.history.replaceState({}, "", u.toString());
+    };
+
+    const buildApiParams = () => {
+      const params = new URLSearchParams();
+      params.set("limit", String(LIMIT));
+      params.set("offset", String((state.page - 1) * LIMIT));
+      params.set("days", String(state.days));
+      params.set("severity", state.severity || "all");
+      params.set("status", state.status || "open");
+
+      if (state.server) params.set("server", state.server);
+      if (state.incident_id) params.set("incident_id", state.incident_id);
+      if (state.ip) params.set("ip", state.ip);
+
+      return params;
+    };
+
+    const closeServerMenu = () => serverMenu?.classList.add("hidden");
+    const toggleServerMenu = () => serverMenu?.classList.toggle("hidden");
+
+    const renderServerOptions = (query = "") => {
+      if (!serverOptionsEl) return;
+      const q = query.trim().toLowerCase();
+      serverOptionsEl.innerHTML = "";
+
+      const filtered = SERVER_LIST.filter((s) => (s.label || s.id).toLowerCase().includes(q));
+      if (serverEmptyEl) serverEmptyEl.classList.toggle("hidden", filtered.length !== 0);
+
+      const allBtn = document.createElement("button");
+      allBtn.type = "button";
+      allBtn.className = "w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB] text-xs text-[#4B5563]";
+      allBtn.textContent = "Todos";
+      allBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (serverLabel) serverLabel.textContent = "Todos";
+        if (serverSelect instanceof HTMLSelectElement) serverSelect.value = "";
+        if (serverSearch instanceof HTMLInputElement) serverSearch.value = "";
+        renderServerOptions("");
+        closeServerMenu();
+      });
+      serverOptionsEl.appendChild(allBtn);
+
+      const div = document.createElement("div");
+      div.className = "my-1 border-t border-[#E5E7EB]";
+      serverOptionsEl.appendChild(div);
+
+      filtered.forEach((s) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB] text-xs text-[#4B5563]";
+        btn.dataset.value = s.id;
+        btn.textContent = s.label || s.id;
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (serverLabel) serverLabel.textContent = s.label || s.id;
+          if (serverSelect instanceof HTMLSelectElement) serverSelect.value = s.id;
+          if (serverSearch instanceof HTMLInputElement) serverSearch.value = "";
+          renderServerOptions("");
+          closeServerMenu();
+        });
+        serverOptionsEl.appendChild(btn);
+      });
+    };
+
+    const loadServers = async () => {
+      // Preferimos tu endpoint real si existe: /alerts/servers
+      // Si falla, caemos a /data/servers.json
+      try {
+        const resApi = await fetch(`${API_BASE}/alerts/servers`, { headers: authHeaders() });
+        if (resApi.ok) {
+          const data = await resApi.json();
+          SERVER_LIST = Array.isArray(data)
+            ? data.map((x) => ({ id: String(x.id || x.label || "").trim(), label: String(x.label || x.id || "").trim() })).filter((x) => x.id)
+            : [];
+        } else {
+          throw new Error("fallback to json");
+        }
+      } catch {
+        try {
+          const res = await fetch("/data/servers.json", { cache: "no-store" });
+          if (!res.ok) return;
+          const data = await res.json();
+          SERVER_LIST = Array.isArray(data)
+            ? data.map((x) => (typeof x === "string" ? { id: x, label: x } : { id: String(x.id || x.label || "").trim(), label: String(x.label || x.id || "").trim() })).filter((x) => x.id)
+            : [];
+        } catch {}
+      }
+
+      if (serverSelect instanceof HTMLSelectElement) {
+        serverSelect.innerHTML = `<option value="">Todos</option>`;
+        SERVER_LIST.forEach((s) => {
+          const opt = document.createElement("option");
+          opt.value = s.id;
+          opt.textContent = s.label || s.id;
+          serverSelect.appendChild(opt);
+        });
+      }
+
+      renderServerOptions("");
+      if (state.server) {
+        const found = SERVER_LIST.find((x) => x.id === state.server);
+        if (serverLabel) serverLabel.textContent = found?.label || found?.id || state.server;
+        if (serverSelect instanceof HTMLSelectElement) serverSelect.value = state.server;
+      }
+    };
+
+    serverTrigger?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleServerMenu();
+      const isOpen = serverMenu && !serverMenu.classList.contains("hidden");
+      if (isOpen) {
+        setTimeout(() => {
+          if (serverSearch instanceof HTMLInputElement) {
+            serverSearch.focus();
+            serverSearch.select();
+          }
+        }, 0);
+      }
+    });
+
+    serverSearch?.addEventListener("click", (e) => e.stopPropagation());
+    serverSearch?.addEventListener("mousedown", (e) => e.stopPropagation());
+    serverSearch?.addEventListener("input", () => {
+      if (serverSearch instanceof HTMLInputElement) renderServerOptions(serverSearch.value);
+    });
+
+    document.addEventListener("click", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      if (!t.closest("[data-server-select]")) closeServerMenu();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeServerMenu();
+    });
+
+    // Bulk helpers
+    const updateBulkUI = () => {
+      const hasSel = selectedIds.size > 0 || selectAllFiltered;
+      if (bulkBar) bulkBar.classList.toggle("hidden", !hasSel);
+
+      if (selectedCountEl) selectedCountEl.textContent = String(selectAllFiltered ? state.total : selectedIds.size);
+
+      if (selectAllHintEl) {
+        selectAllHintEl.textContent = selectAllFiltered ? ` (aplicará a ${state.total} alertas según filtros)` : "";
+      }
+
+      if (checkAllPage instanceof HTMLInputElement) {
+        const pageChecks = Array.from(document.querySelectorAll("input[data-row-check]"));
+        const checkedCount = pageChecks.filter((c) => c instanceof HTMLInputElement && c.checked).length;
+        checkAllPage.checked = pageChecks.length > 0 && checkedCount === pageChecks.length;
+        checkAllPage.indeterminate = checkedCount > 0 && checkedCount < pageChecks.length;
+      }
+    };
+
+    const clearSelection = () => {
+      selectedIds.clear();
+      selectAllFiltered = false;
+
+      document.querySelectorAll("input[data-row-check]").forEach((el) => {
+        if (el instanceof HTMLInputElement) el.checked = false;
+      });
+
+      if (checkAllPage instanceof HTMLInputElement) {
+        checkAllPage.checked = false;
+        checkAllPage.indeterminate = false;
+      }
+
+      if (bulkStatusSel instanceof HTMLSelectElement) bulkStatusSel.value = "";
+      if (bulkDispositionSel instanceof HTMLSelectElement) bulkDispositionSel.value = "";
+      if (bulkNoteInput instanceof HTMLInputElement) bulkNoteInput.value = "";
+
+      updateBulkUI();
+    };
+
+    const collectCurrentFiltersForBulk = () => {
+      return {
+        server: state.server || null,
+        incident_id: state.incident_id ? Number(state.incident_id) : null,
+        ip: state.ip || null,
+        days: Number(state.days || 7),
+        severity: state.severity || "all",
+        status_filter: state.status || "all",
+      };
+    };
+
+    const bulkApply = async () => {
+      const newStatus = String(bulkStatusSel?.value || "").trim();
+      if (!newStatus) return;
+
+      const disposition = String(bulkDispositionSel?.value || "").trim();
+      const note = String(bulkNoteInput?.value || "").trim();
+
+      const base = {
+        status: newStatus,
+        disposition: disposition || null,
+        note: note || null,
+        category: null, // compat
+      };
+
+      const body = selectAllFiltered
+        ? { ...base, select_all: true, ...collectCurrentFiltersForBulk() }
+        : { ...base, select_all: false, ids: Array.from(selectedIds).map((x) => Number(x)) };
+
+      const res = await fetch(`${API_BASE}/alerts/status/bulk`, {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        console.error("Error bulk update:", await res.text());
+        return;
+      }
+
+      clearSelection();
+      await load();
+    };
+
+    const severityBucketFromLevel = (lvl) => {
+      const s = String(lvl || "").toLowerCase();
+      if (s === "high") return "high";
+      if (s === "medium") return "medium";
+      if (s === "low") return "low";
+      return "info";
+    };
+
+    const renderRows = (items) => {
+      if (!tbody) return;
+      tbody.innerHTML = "";
+
+      items.forEach((a) => {
+        const tr = document.createElement("tr");
+        tr.className = "border-b border-[#F3F4F6]";
+
+        // checkbox
+        const tdCheck = document.createElement("td");
+        tdCheck.className = "py-3 px-3";
+        const chk = document.createElement("input");
+        chk.type = "checkbox";
+        chk.dataset.rowCheck = "1";
+        chk.dataset.evId = String(a.id);
+        chk.checked = selectedIds.has(String(a.id)) || selectAllFiltered;
+        chk.addEventListener("change", () => {
+          const id = String(a.id);
+          if (selectAllFiltered) {
+            selectAllFiltered = false;
+            selectedIds.clear();
+            document.querySelectorAll("input[data-row-check]").forEach((x) => {
+              if (x instanceof HTMLInputElement && x.checked) selectedIds.add(String(x.dataset.evId || ""));
+            });
+          } else {
+            if (chk.checked) selectedIds.add(id);
+            else selectedIds.delete(id);
+          }
+          updateBulkUI();
+        });
+        tdCheck.appendChild(chk);
+
+        // Fecha
+        const tdDate = document.createElement("td");
+        tdDate.className = "py-3 px-3 whitespace-nowrap";
+        tdDate.textContent = fmtLocal(a.datetime);
+
+        // Severidad badge
+        const tdSev = document.createElement("td");
+        tdSev.className = "py-3 px-3";
+        const badge = document.createElement("span");
+        const lvl = severityBucketFromLevel(a.level);
+        badge.className =
+          "inline-flex items-center justify-center px-3 py-1 rounded-full text-[11px] font-medium " +
+          (SEV_BADGE[lvl] || SEV_BADGE.info);
+        badge.textContent = a.severityLabel || "—";
+        tdSev.appendChild(badge);
+
+        // Estado
+        const tdStatus = document.createElement("td");
+        tdStatus.className = "py-3 px-3";
+        const st = String(a.status || "open");
+        const stBadge = document.createElement("span");
+        stBadge.className =
+          "inline-flex items-center justify-center px-3 py-1 rounded-full text-[11px] font-medium " +
+          (STATUS_BADGE[st] || STATUS_BADGE.open);
+        stBadge.textContent = STATUS_LABEL[st] || st;
+        tdStatus.appendChild(stBadge);
+
+        // Regla
+        const tdRule = document.createElement("td");
+        tdRule.className = "py-3 px-3";
+        tdRule.textContent = a.type || "—";
+
+        // IP
+        const tdIp = document.createElement("td");
+        tdIp.className = "py-3 px-3";
+        tdIp.textContent = a.ip || "—";
+
+        // Servidor
+        const tdServer = document.createElement("td");
+        tdServer.className = "py-3 px-3";
+        tdServer.textContent = a.server || "—";
+
+        // Mensaje
+        const tdMsg = document.createElement("td");
+        tdMsg.className = "py-3 px-3 text-[11px] text-[#6B7280]";
+        tdMsg.textContent = a.description || "—";
+
+        // Acción
+        const tdAction = document.createElement("td");
+        tdAction.className = "py-3 px-3 text-right";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className =
+          "inline-flex items-center px-4 py-2 rounded-full border border-[#D1D5DB] text-[12px] text-[#374151] hover:bg-[#F3F4F6]";
+        btn.textContent = "Ver detalle";
+        btn.setAttribute("data-open-modal", "1");     // marcador
+        btn.setAttribute("data-ev-id", String(a.id)); 
+        tdAction.appendChild(btn);
+
+        tr.append(tdCheck, tdDate, tdSev, tdStatus, tdRule, tdIp, tdServer, tdMsg, tdAction);
+        tbody.appendChild(tr);
+      });
+
+      updateBulkUI();
+    };
+
+    const pageWindow = (current, total) => {
+      const out = [];
+      const add = (x) => out.push(x);
+      const pushRange = (a, b) => { for (let i = a; i <= b; i++) add(i); };
+
+      if (total <= 9) { pushRange(1, total); return out; }
+
+      add(1);
+      const left = Math.max(2, current - 2);
+      const right = Math.min(total - 1, current + 2);
+
+      if (left > 2) add("…");
+      pushRange(left, right);
+      if (right < total - 1) add("…");
+      add(total);
+
+      return out;
+    };
+
+    const renderPagination = () => {
+      if (!pagination) return;
+      pagination.innerHTML = "";
+
+      const items = pageWindow(state.page, state.pages);
+
+      items.forEach((x) => {
+        if (x === "…") {
+          const span = document.createElement("span");
+          span.className = "px-2 text-[12px] text-[#6B7280]";
+          span.textContent = "…";
+          pagination.appendChild(span);
+          return;
+        }
+
+        const n = Number(x);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className =
+          "min-w-[34px] px-2 py-1.5 rounded-full border text-[12px] " +
+          (n === state.page
+            ? "border-[#111827] text-[#111827]"
+            : "border-[#E5E7EB] text-[#374151] hover:bg-[#F3F4F6]");
+        btn.textContent = String(n);
+        btn.addEventListener("click", () => {
+          state.page = n;
+          writeUrlState();
+          load();
+        });
+        pagination.appendChild(btn);
+      });
+
+      if (prevBtn) prevBtn.disabled = state.page <= 1;
+      if (nextBtn) nextBtn.disabled = state.page >= state.pages;
+    };
+
+    const renderHeader = () => {
+      const from = (state.page - 1) * LIMIT + 1;
+      const to = Math.min(state.total, state.page * LIMIT);
+
+      if (resultsSummary) {
+        const incTxt = state.incident_id ? ` | Incidente: ${state.incident_id}` : "";
+        const ipTxt = state.ip ? ` | IP: ${state.ip}` : "";
+        resultsSummary.textContent = `Mostrando ${state.total ? from : 0}-${to} de ${state.total}${incTxt}${ipTxt}`;
+      }
+      if (pageLabel) pageLabel.textContent = `Página ${state.page} de ${state.pages}`;
+    };
+
+    // Load
+    const load = async () => {
+      const params = buildApiParams();
+      const res = await fetch(`${API_BASE}/alerts?${params.toString()}`, { headers: authHeaders() });
+
+      if (!res.ok) {
+        console.error("Error cargando /alerts:", await res.text());
+        return;
+      }
+
+      const data = await res.json();
+      const items = Array.isArray(data.items) ? data.items : [];
+
+      state.total = Number(data.total || 0);
+      state.pages = Math.max(1, Math.ceil(state.total / LIMIT));
+
+      renderRows(items);
+      renderHeader();
+      renderPagination();
+      updateBulkUI();
+    };
+
+    // Modal
+    let currentModalEventId = null;
+
+    const openEventModal = async (eventId) => {
+      if (!modal) return;
+
+      currentModalEventId = eventId;
+
+      modal.style.display = "grid";
+      modal.classList.remove("hidden");
+
+      const tsEl = modal.querySelector("[data-ev-ts]");
+      const serverEl = modal.querySelector("[data-ev-server]");
+      const ipEl = modal.querySelector("[data-ev-ip]");
+      const ruleEl = modal.querySelector("[data-ev-rule]");
+      const sevEl = modal.querySelector("[data-ev-sev]");
+      const statusTextEl = modal.querySelector("[data-ev-status]");
+      const msgEl = modal.querySelector("[data-ev-msg]");
+      const rawEl = modal.querySelector("[data-ev-raw]");
+
+      const statusSel = modal.querySelector("[data-ev-status-select]");
+      const dispSel = modal.querySelector("[data-ev-disposition]");
+      const noteTa = modal.querySelector("[data-ev-note]");
+
+      const saveBtn = modal.querySelector("[data-ev-save]");
+      const statusMsg = modal.querySelector("[data-ev-status-msg]");
+
+      if (tsEl) tsEl.textContent = "Cargando...";
+      if (serverEl) serverEl.textContent = "";
+      if (ipEl) ipEl.textContent = "";
+      if (ruleEl) ruleEl.textContent = "";
+      if (sevEl) sevEl.textContent = "";
+      if (statusTextEl) statusTextEl.textContent = "";
+      if (msgEl) msgEl.textContent = "";
+      if (rawEl) rawEl.textContent = "";
+      if (statusMsg) statusMsg.textContent = "";
+
+      if (saveBtn instanceof HTMLButtonElement) saveBtn.disabled = true;
+
+      const res = await fetch(`${API_BASE}/alerts/${encodeURIComponent(eventId)}`, { headers: authHeaders() });
+      if (!res.ok) {
+        console.error("Error /alerts/{id}:", await res.text());
+        if (tsEl) tsEl.textContent = "Error al cargar detalle";
+        return;
+      }
+
+      const d = await res.json();
+
+      if (tsEl) tsEl.textContent = fmtLocal(d.timestamp_utc || d.timestamp_local || d.timestamp || "—");
+      if (serverEl) serverEl.textContent = d.server || "—";
+      if (ipEl) ipEl.textContent = d.ip || "—";
+
+      const ruleTxt = `${d.rule_id || ""}${d.rule_name ? " – " + d.rule_name : ""}`.trim();
+      if (ruleEl) ruleEl.textContent = ruleTxt || d.rule_name || "—";
+
+      if (sevEl) sevEl.textContent = d.severity_label || d.severityLabel || "—";
+
+      const currentStatus = String(d.status || "open");
+      if (statusTextEl) statusTextEl.textContent = STATUS_LABEL[currentStatus] || currentStatus;
+
+      if (msgEl) msgEl.textContent = d.group_key || "—";
+
+      const rawText = String(d.raw_log_snippet || "—");
+      const MAX_LINES = 80;
+
+      const lines = rawText.split(/\r?\n/);
+      const clipped = lines.slice(0, MAX_LINES).join("\n");
+      const suffix = lines.length > MAX_LINES ? "\n\n… (recortado)" : "";
+
+      if (rawEl) rawEl.textContent = clipped + suffix;
+
+      if (statusSel instanceof HTMLSelectElement) statusSel.value = currentStatus;
+      if (dispSel instanceof HTMLSelectElement) dispSel.value = String(d.disposition || "");
+      if (noteTa instanceof HTMLTextAreaElement) noteTa.value = String(d.note || "");
+
+      if (saveBtn instanceof HTMLButtonElement) saveBtn.disabled = false;
+    };
+
+    const closeEventModal = () => {
+      if (!modal) return;
+      modal.style.display = "none";
+      modal.classList.add("hidden");
+      currentModalEventId = null;
+    };
+
+    const saveModalAll = async () => {
+      if (!modal || !currentModalEventId) return;
+
+      const statusSel = modal.querySelector("[data-ev-status-select]");
+      const dispSel = modal.querySelector("[data-ev-disposition]");
+      const noteTa = modal.querySelector("[data-ev-note]");
+
+      const statusMsg = modal.querySelector("[data-ev-status-msg]");
+      const statusTextEl = modal.querySelector("[data-ev-status]");
+      const saveBtn = modal.querySelector("[data-ev-save]");
+
+      const newStatus = statusSel instanceof HTMLSelectElement ? statusSel.value : "open";
+      const disposition = dispSel instanceof HTMLSelectElement ? dispSel.value : "";
+      const note = noteTa instanceof HTMLTextAreaElement ? String(noteTa.value || "").trim() : "";
+
+      if (statusMsg) statusMsg.textContent = "Guardando...";
+      if (saveBtn instanceof HTMLButtonElement) saveBtn.disabled = true;
+
+      const res = await fetch(`${API_BASE}/alerts/${encodeURIComponent(currentModalEventId)}`, {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          status: newStatus,
+          disposition: disposition || null,
+          note: note || null,
+          category: null,
+        }),
+      });
+
+      if (!res.ok) {
+        console.error("Error update alert:", await res.text());
+        if (statusMsg) statusMsg.textContent = "Error al guardar";
+        if (saveBtn instanceof HTMLButtonElement) saveBtn.disabled = false;
+        return;
+      }
+
+      const out = await res.json();
+      const s = out.status || newStatus;
+
+      if (statusTextEl) statusTextEl.textContent = STATUS_LABEL[s] || s;
+      if (statusMsg) statusMsg.textContent = "Guardado";
+
+      if (saveBtn instanceof HTMLButtonElement) setTimeout(() => { saveBtn.disabled = false; }, 250);
+
+      await load();
+    };
+
+    // Actions
+    btnApply?.addEventListener("click", () => {
+      state.server = (serverSelect instanceof HTMLSelectElement ? serverSelect.value : "") || "";
+      state.severity = String(fSeverity?.value || "all").trim();
+      state.status = String(fStatus?.value || "open").trim();
+      state.days = Number(fDays?.value || "7");
+      state.incident_id = String(fIncident?.value || "").trim();
+      state.ip = String(fIp?.value || "").trim();
+      state.page = 1;
+
+      clearSelection();
+      syncInputs();
+      writeUrlState();
+      load();
+    });
+
+    btnReset?.addEventListener("click", () => {
+      state = { ...state, server: "", severity: "all", status: "open", days: 7, incident_id: "", ip: "", page: 1 };
+
+      if (serverLabel) serverLabel.textContent = "Todos";
+      if (serverSelect instanceof HTMLSelectElement) serverSelect.value = "";
+
+      clearSelection();
+      syncInputs();
+      writeUrlState();
+      load();
+    });
+
+    prevBtn?.addEventListener("click", () => {
+      if (state.page <= 1) return;
+      state.page -= 1;
+      writeUrlState();
+      load();
+    });
+
+    nextBtn?.addEventListener("click", () => {
+      if (state.page >= state.pages) return;
+      state.page += 1;
+      writeUrlState();
+      load();
+    });
+
+    checkAllPage?.addEventListener("change", () => {
+      if (!(checkAllPage instanceof HTMLInputElement)) return;
+
+      if (selectAllFiltered) {
+        selectAllFiltered = false;
+        selectedIds.clear();
+      }
+
+      const checks = document.querySelectorAll("input[data-row-check]");
+      checks.forEach((el) => {
+        if (!(el instanceof HTMLInputElement)) return;
+        el.checked = checkAllPage.checked;
+        const id = String(el.dataset.evId || "");
+        if (!id) return;
+        if (checkAllPage.checked) selectedIds.add(id);
+        else selectedIds.delete(id);
+      });
+      updateBulkUI();
+    });
+
+    bulkClearBtn?.addEventListener("click", () => clearSelection());
+    bulkApplyBtn?.addEventListener("click", () => bulkApply());
+
+    bulkSelectAllFilteredBtn?.addEventListener("click", () => {
+      selectAllFiltered = true;
+      selectedIds.clear();
+      document.querySelectorAll("input[data-row-check]").forEach((el) => {
+        if (el instanceof HTMLInputElement) el.checked = true;
+      });
+      updateBulkUI();
+    });
+
+    document.addEventListener("click", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+
+      if (t.matches("[data-event-close]") || t.closest("[data-event-close]")) {
+        closeEventModal();
+        return;
+      }
+
+      if (t === modal) {
+        closeEventModal();
+        return;
+      }
+
+      if (t.matches("[data-ev-save]") || t.closest("[data-ev-save]")) {
+        saveModalAll();
+        return;
+      }
+
+      const btn = t.closest("button[data-open-modal]");
+      if (btn) {
+        const id = btn.getAttribute("data-ev-id");
+        if (id) openEventModal(id);
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeEventModal();
+    });
+
+    // Init
+    readUrlState();
+    syncInputs();
+    writeUrlState();
+
+    await loadServers();
+
+    if (state.server) {
+      const found = SERVER_LIST.find((x) => x.id === state.server);
+      if (serverLabel) serverLabel.textContent = found?.label || found?.id || state.server;
+      if (serverSelect instanceof HTMLSelectElement) serverSelect.value = state.server;
+    } else {
+      if (serverLabel) serverLabel.textContent = "Todos";
+      if (serverSelect instanceof HTMLSelectElement) serverSelect.value = "";
+    }
+
+    await load();
+
+    // Si venimos desde incidentes con focus_alert_id, abrimos el modal al final
+    if (window.__FOCUS_ALERT_ID__) {
+      const id = String(window.__FOCUS_ALERT_ID__ || "").trim();
+      if (id) openEventModal(id);
+      window.__FOCUS_ALERT_ID__ = "";
+    }
+  </script>
+</DashboardLayout>

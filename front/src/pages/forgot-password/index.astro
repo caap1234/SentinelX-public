@@ -1,0 +1,164 @@
+---
+import LandingLayout from "../../layouts/LandingLayout.astro";
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000"
+---
+
+<LandingLayout>
+  <main class="min-h-screen bg-[#0F1216] text-[#D6D9DD]">
+    <div class="min-h-screen mx-auto flex w-full max-w-[1440px]">
+
+      <!-- COLUMNA IZQUIERDA -->
+      <section
+        class="w-full lg:w-[480px] bg-[#1C2127] shadow-[0_0_20px_rgba(0,0,0,0.25)]
+               px-8 py-10 lg:px-[60px] lg:py-20 flex flex-col"
+      >
+        <!-- LOGO -->
+        <div class="flex items-center gap-3 mb-10">
+          <span class="h-9 w-1 bg-[#E67E22]"></span>
+          <span class="text-2xl font-bold tracking-tight text-[#E67E22]">
+            SentinelX SIEM
+          </span>
+        </div>
+
+        <!-- CONTENIDO -->
+        <div class="max-w-sm">
+          <p class="text-sm font-semibold text-[#D6D9DD] mb-2">
+            Recuperar contraseña
+          </p>
+          <p class="text-xs text-[#9CA3AF] mb-6">
+            Ingresa el correo asociado a tu cuenta y te enviaremos un enlace para restablecer tu contraseña.
+          </p>
+
+          <form class="space-y-4" data-forgot-form>
+            <div>
+              <label class="block text-xs mb-1 text-[#9CA3AF]">
+                Correo electrónico
+              </label>
+              <input
+                type="email"
+                data-forgot-email
+                placeholder="tu.correo@empresa.com"
+                class="w-full h-11 rounded-lg bg-[#232A32] border border-[#2A3038]
+                       px-4 text-sm text-[#D6D9DD] placeholder:text-[#8A929A]
+                       focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+              />
+            </div>
+
+            <!-- Mensajes -->
+            <p
+              data-forgot-success
+              class="mt-1 text-xs text-[#4ADE80] bg-[#022C22] border border-[#16A34A] rounded-md px-3 py-2 hidden"
+            >
+              Si el correo existe, se ha enviado un enlace de recuperación.
+            </p>
+            <p
+              data-forgot-error
+              class="mt-1 text-xs text-[#F97373] hidden"
+            ></p>
+
+            <button
+              type="submit"
+              data-forgot-button
+              class="mt-4 w-full h-11 rounded-full bg-[#E67E22] text-[#000000]
+                     text-sm font-semibold tracking-wide flex items-center justify-center
+                     hover:bg-[#D35400] transition-colors"
+            >
+              Enviar enlace de recuperación
+            </button>
+
+            <p class="mt-4 text-xs text-center text-[#9CA3AF]">
+              ¿Ya recuerdas tu contraseña?
+              <a href="/login" class="text-[#F6CF5B] hover:text-[#FFC300] font-medium">
+                Volver al inicio de sesión
+              </a>
+            </p>
+          </form>
+        </div>
+      </section>
+
+      <!-- COLUMNA DERECHA (IMAGEN) -->
+      <section class="hidden lg:block flex-1">
+        <img
+          src="/login/login.png"
+          alt="Panel SentinelX SIEM"
+          class="w-full h-full object-cover"
+          loading="lazy"
+        />
+      </section>
+    </div>
+
+    <footer class="h-10 bg-[#000000] flex items-center justify-center">
+      <p class="text-[11px] tracking-wide text-[#AEB4BC]">
+        © 2025 SentinelX SIEM · Plataforma de análisis de logs y seguridad.
+      </p>
+    </footer>
+  </main>
+
+  <script type="module" define:vars={{ API_BASE }}>
+
+    const form = document.querySelector("[data-forgot-form]");
+    const emailInput = document.querySelector("[data-forgot-email]");
+    const btn = document.querySelector("[data-forgot-button]");
+    const successLabel = document.querySelector("[data-forgot-success]");
+    const errorLabel = document.querySelector("[data-forgot-error]");
+
+    function showSuccess() {
+      if (successLabel) successLabel.classList.remove("hidden");
+      if (errorLabel) {
+        errorLabel.textContent = "";
+        errorLabel.classList.add("hidden");
+      }
+    }
+
+    function showError(msg) {
+      if (!errorLabel) return;
+      errorLabel.textContent = msg;
+      errorLabel.classList.remove("hidden");
+    }
+
+    if (form && emailInput && btn) {
+      form.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        if (successLabel) successLabel.classList.add("hidden");
+        if (errorLabel) {
+          errorLabel.textContent = "";
+          errorLabel.classList.add("hidden");
+        }
+
+        const email = emailInput.value.trim();
+        if (!email) {
+          showError("Ingresa un correo válido.");
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Enviando...";
+
+        try {
+          const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({ email }),
+          });
+
+          if (!res.ok) {
+            console.error("Error forgot-password:", await res.text());
+            showError("No se pudo procesar la solicitud. Inténtalo más tarde.");
+            return;
+          }
+
+          showSuccess();
+        } catch (err) {
+          console.error(err);
+          showError("Error de conexión con la API.");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Enviar enlace de recuperación";
+        }
+      });
+    }
+  </script>
+</LandingLayout>

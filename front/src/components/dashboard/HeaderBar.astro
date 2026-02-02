@@ -1,0 +1,659 @@
+---
+export interface Props {
+  title?: string;
+  subtitle?: string;
+  showFilters?: boolean;
+  showServerFilter?: boolean;
+  showDateFilter?: boolean;
+  showSeverityFilter?: boolean;
+}
+
+const {
+  title = "Dashboard general",
+  subtitle = "Vista general de la actividad de seguridad",
+  showFilters = true,
+  showServerFilter = true,
+  showDateFilter = true,
+  showSeverityFilter = true,
+} = Astro.props;
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000"
+---
+
+<header class="border-b border-[#E5E7EB]">
+  <!-- Fila superior: título + iconos -->
+  <div class="h-[73px] bg-white px-8 flex items-center justify-between">
+    <h1 class="text-base md:text-lg font-semibold text-[#111827]">
+      {title}
+    </h1>
+
+    <div class="flex items-center gap-4">
+      <!-- Botón campana -->
+      <button
+        type="button"
+        class="h-9 w-9 rounded-full border border-[#E5E7EB] bg-white
+               flex items-center justify-center text-[#6B7280] hover:bg-[#F9FAFB]"
+        aria-label="Notificaciones"
+      >
+        <img
+          src="/svg/bell.svg"
+          alt="Notificaciones"
+          class="h-4 w-4"
+          loading="lazy"
+        />
+      </button>
+
+      <!-- Perfil + menú -->
+      <div class="relative" data-profile-container>
+        <button
+          type="button"
+          data-profile-button
+          class="h-9 w-9 rounded-full border-2 border-[#E67E22] bg-white
+                 flex items-center justify-center text-[#E67E22] hover:bg-[#FFF7ED] focus:outline-none"
+          aria-label="Perfil"
+        >
+          <img
+            src="/svg/user.svg"
+            alt="Perfil"
+            class="h-4 w-4"
+            loading="lazy"
+          />
+        </button>
+
+        <div
+          data-profile-menu
+          class="hidden absolute right-0 mt-2 w-52 rounded-lg bg-white border border-[#E5E7EB]
+                 shadow-lg text-xs text-[#4B5563] z-20 overflow-hidden"
+        >
+          <!-- Bloque con usuario y rol -->
+          <div class="px-4 py-3 border-b border-[#E5E7EB] bg-[#F9FAFB]">
+            <p
+              data-user-name-menu
+              class="text-[13px] font-semibold text-[#111827]"
+            >
+              Cargando usuario...
+            </p>
+            <p
+              data-user-role-menu
+              class="mt-0.5 text-[11px] text-[#6B7280]"
+            >
+              —
+            </p>
+          </div>
+
+          <!-- Cerrar sesión -->
+          <button
+            type="button"
+            data-logout-button
+            class="w-full text-left block px-4 py-2.5 hover:bg-[#F9FAFB] text-[#DC2626] text-[12px]"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {showFilters && (
+    <div
+      class="bg-[#F4F5F7] px-8 py-3 flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-t border-[#E5E7EB]"
+    >
+      <div class="flex flex-col gap-2 max-w-[40%]">
+        <p class="text-sm text-[#6B7280]">{subtitle}</p>
+        <p class="mt-1 text-xs gap-3 text-[#9CA3AF]">
+          Filtrado por:
+          <span class="font-medium" data-filter-summary-server>
+            {" "}
+            Todos los servidores
+          </span>
+          {" ·"}
+          <span class="font-medium" data-filter-summary-date>
+            {" "}
+            Últimos 7 días
+          </span>
+          {showSeverityFilter && (
+            <>
+              {" ·"}
+              <span class="font-medium" data-filter-summary-severity>
+                {" "}
+                Todas las severidades
+              </span>
+            </>
+          )}
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3 mt-2 md:mt-0">
+        {/* Servidores */}
+        {showServerFilter && (
+          <div class="relative" data-filter="server">
+            <button
+              type="button"
+              data-filter-trigger
+              data-filter-type="server"
+              data-filter-value="all"
+              class="relative inline-flex items-center rounded-lg bg-white border border-[#E5E7EB]
+                     px-3 text-xs font-normal text-[#4B5563] shadow-sm w-[200px] h-9 hover:bg-[#F9FAFB]"
+            >
+              <span class="px-1 pl-6" data-filter-label>
+                Todos los servidores
+              </span>
+              <span class="absolute right-3 text-[10px]">▼</span>
+            </button>
+
+            <div
+              data-filter-menu
+              class="hidden absolute right-0 mt-1 w-56 rounded-lg bg-white border border-[#E5E7EB]
+                     shadow-lg text-xs text-[#4B5563] z-30 overflow-hidden"
+            >
+              <!-- Buscador -->
+              <div class="p-2 border-b border-[#E5E7EB] bg-white">
+                <input
+                  type="text"
+                  data-server-search
+                  placeholder="Buscar servidor..."
+                  class="w-full h-8 rounded-md border border-[#D1D5DB] px-2 text-[11px]
+                         focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+                />
+              </div>
+
+              <!-- Lista con scroll -->
+              <div class="max-h-56 overflow-auto py-1" data-server-options>
+                <button
+                  type="button"
+                  data-filter-option
+                  data-value="all"
+                  class="w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB]"
+                >
+                  Todos los servidores
+                </button>
+
+                <!-- Aquí se insertan servidores desde /public/data/servers.json -->
+                <div data-server-dynamic></div>
+
+                <div
+                  class="hidden px-4 py-3 text-[11px] text-[#6B7280]"
+                  data-server-empty
+                >
+                  Sin resultados
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Fecha */}
+        {showDateFilter && (
+          <div class="relative" data-filter="date">
+            <button
+              type="button"
+              data-filter-trigger
+              data-filter-type="date"
+              data-filter-value="7d"
+              class="relative inline-flex items-center rounded-lg bg-white border border-[#E5E7EB]
+                     px-3 text-xs font-normal text-[#4B5563] shadow-sm w-[200px] h-9 hover:bg-[#F9FAFB]"
+            >
+              <span class="px-1 pl-6" data-filter-label>
+                Últimos 7 días
+              </span>
+              <span class="absolute right-3 text-[10px]">▼</span>
+            </button>
+
+            <div
+              data-filter-menu
+              class="hidden absolute right-0 mt-1 w-56 rounded-lg bg-white border border-[#E5E7EB]
+                     shadow-lg text-xs text-[#4B5563] z-30"
+            >
+              <button
+                type="button"
+                data-filter-option
+                data-value="1d"
+                class="w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB]"
+              >
+                Últimas 24 horas
+              </button>
+              <button
+                type="button"
+                data-filter-option
+                data-value="7d"
+                class="w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB]"
+              >
+                Últimos 7 días
+              </button>
+              <button
+                type="button"
+                data-filter-option
+                data-value="30d"
+                class="w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB]"
+              >
+                Último mes
+              </button>
+
+              <!-- Rango personalizado -->
+              <div class="px-4 py-3 text-[11px] text-[#6B7280] border-t border-[#E5E7EB] space-y-2">
+                <p class="font-medium text-[#4B5563] mb-1">
+                  Rango personalizado
+                </p>
+                <div class="flex flex-col gap-2">
+                  <input
+                    type="date"
+                    data-range-from
+                    class="w-full h-8 rounded-md border border-[#D1D5DB] px-2 text-[11px] focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+                  />
+                  <input
+                    type="date"
+                    data-range-to
+                    class="w-full h-8 rounded-md border border-[#D1D5DB] px-2 text-[11px] focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+                  />
+                  <button
+                    type="button"
+                    data-apply-range
+                    class="mt-1 inline-flex items-center justify-center h-8 rounded-full bg-[#E67E22] px-3 text-[11px] font-semibold text-black hover:bg-[#D35400] transition-colors"
+                  >
+                    Aplicar rango
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Severidad */}
+        {showSeverityFilter && (
+          <div class="relative" data-filter="severity">
+            <button
+              type="button"
+              data-filter-trigger
+              data-filter-type="severity"
+              data-filter-value="all"
+              class="relative inline-flex items-center rounded-lg bg-white border border-[#E5E7EB]
+                     px-3 text-xs font-normal text-[#4B5563] shadow-sm w-[200px] h-9 hover:bg-[#F9FAFB]"
+            >
+              <span class="px-1 pl-6" data-filter-label>
+                Todas las severidades
+              </span>
+              <span class="absolute right-3 text-[10px]">▼</span>
+            </button>
+
+            <div
+              data-filter-menu
+              class="hidden absolute right-0 mt-1 w-52 rounded-lg bg-white border border-[#E5E7EB]
+                     shadow-lg text-xs text-[#4B5563] z-30"
+            >
+              <button
+                type="button"
+                data-filter-option
+                data-value="all"
+                class="w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB]"
+              >
+                Todas las severidades
+              </button>
+              <button
+                type="button"
+                data-filter-option
+                data-value="high"
+                class="w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB]"
+              >
+                Alta
+              </button>
+              <button
+                type="button"
+                data-filter-option
+                data-value="medium"
+                class="w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB]"
+              >
+                Media
+              </button>
+              <button
+                type="button"
+                data-filter-option
+                data-value="low"
+                class="w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB]"
+              >
+                Baja
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )}
+
+  <script type="module" define:vars={{ API_BASE }}>
+
+    // =========================
+    // Perfil
+    // =========================
+    const container = document.querySelector("[data-profile-container]");
+    if (container) {
+      const button = container.querySelector("[data-profile-button]");
+      const menu = container.querySelector("[data-profile-menu]");
+      const nameMenuEl = container.querySelector("[data-user-name-menu]");
+      const roleMenuEl = container.querySelector("[data-user-role-menu]");
+      const logoutBtn = container.querySelector("[data-logout-button]");
+
+      const closeMenu = () => menu?.classList.add("hidden");
+      const toggleMenu = () => menu?.classList.toggle("hidden");
+
+      button?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        toggleMenu();
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!container.contains(/** @type {Node} */ (event.target))) closeMenu();
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeMenu();
+      });
+
+      const token =
+        localStorage.getItem("sentinelx_token") ||
+        sessionStorage.getItem("sentinelx_token");
+      // @ts-ignore
+      window.SENTINELX_TOKEN = token;
+
+      if (!token) {
+        window.location.href = "/login";
+      } else {
+        (async () => {
+          try {
+            const res = await fetch(`${API_BASE}/auth/me`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
+              },
+            });
+
+            if (res.status === 401) {
+              localStorage.removeItem("sentinelx_token");
+              sessionStorage.removeItem("sentinelx_token");
+              window.location.href = "/login";
+              return;
+            }
+
+            if (!res.ok) {
+              console.error("Error al obtener /auth/me", await res.text());
+              return;
+            }
+
+            const user = await res.json();
+            if (nameMenuEl) nameMenuEl.textContent = user.full_name || user.email;
+            if (roleMenuEl) {
+              roleMenuEl.textContent = user.is_admin ? "Administrador" : "Analista estándar";
+            }
+          } catch (err) {
+            console.error("Error llamando /auth/me", err);
+          }
+        })();
+      }
+
+      logoutBtn?.addEventListener("click", (e) => {
+        e.preventDefault();
+        localStorage.removeItem("sentinelx_token");
+        sessionStorage.removeItem("sentinelx_token");
+        window.location.href = "/login";
+      });
+    }
+
+    // =========================
+    // Helpers: cargar servidores desde /public/data/servers.json
+    // =========================
+    /**
+     * @typedef {{ id: string; label?: string }} ServerItem
+     */
+
+    const loadServersIntoMenu = async () => {
+      const host = document.querySelector('[data-filter="server"]');
+      if (!host) return;
+
+      const target = host.querySelector("[data-server-dynamic]");
+      if (!target) return;
+
+      try {
+        const res = await fetch("/data/servers.json", { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        /** @type {ServerItem[]|string[]} */
+        const data = await res.json();
+
+        const servers = Array.isArray(data)
+          ? data.map((x) => {
+              if (typeof x === "string") return { id: x, label: x };
+              return { id: x.id, label: x.label || x.id };
+            })
+          : [];
+
+        const frag = document.createDocumentFragment();
+
+        servers.forEach((srv) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.setAttribute("data-filter-option", "");
+          btn.setAttribute("data-value", srv.id);
+          btn.setAttribute("data-server-option", "");
+          btn.className = "w-full text-left px-4 py-2.5 hover:bg-[#F9FAFB]";
+          btn.textContent = srv.label || srv.id;
+          frag.appendChild(btn);
+        });
+
+        target.innerHTML = "";
+        target.appendChild(frag);
+      } catch (e) {
+        console.error("No se pudo cargar /data/servers.json", e);
+      }
+    };
+
+    // =========================
+    // Filtros
+    // =========================
+    const closeAllFilterMenus = () => {
+      document
+        .querySelectorAll("[data-filter-menu]")
+        .forEach((menu) => menu.classList.add("hidden"));
+    };
+
+    const getCurrentFilters = () => {
+      const serverBtn = document.querySelector(
+        '[data-filter-trigger][data-filter-type="server"]'
+      );
+      const dateBtn = document.querySelector(
+        '[data-filter-trigger][data-filter-type="date"]'
+      );
+      const sevBtn = document.querySelector(
+        '[data-filter-trigger][data-filter-type="severity"]'
+      );
+
+      const rangeFrom = dateBtn?.getAttribute("data-range-from") || null;
+      const rangeTo = dateBtn?.getAttribute("data-range-to") || null;
+
+      return {
+        server: serverBtn?.getAttribute("data-filter-value") || "all",
+        dateRange: dateBtn?.getAttribute("data-filter-value") || "7d",
+        severity: sevBtn?.getAttribute("data-filter-value") || "all",
+        rangeFrom,
+        rangeTo,
+      };
+    };
+
+    const updateFilterSummary = () => {
+      const serverLabelEl = document.querySelector("[data-filter-summary-server]");
+      const dateLabelEl = document.querySelector("[data-filter-summary-date]");
+      const sevLabelEl = document.querySelector("[data-filter-summary-severity]");
+
+      const serverBtn = document.querySelector(
+        '[data-filter-trigger][data-filter-type="server"] [data-filter-label]'
+      );
+      const dateBtnLabel = document.querySelector(
+        '[data-filter-trigger][data-filter-type="date"] [data-filter-label]'
+      );
+      const sevBtn = document.querySelector(
+        '[data-filter-trigger][data-filter-type="severity"] [data-filter-label]'
+      );
+
+      if (serverLabelEl && serverBtn) serverLabelEl.textContent = " " + serverBtn.textContent;
+      if (dateLabelEl && dateBtnLabel) dateLabelEl.textContent = " " + dateBtnLabel.textContent;
+      if (sevLabelEl && sevBtn) sevLabelEl.textContent = " " + sevBtn.textContent;
+
+      const filters = getCurrentFilters();
+      // @ts-ignore
+      window.SENTINELX_CURRENT_FILTERS = filters;
+
+      window.dispatchEvent(new CustomEvent("sentinelx:filters-changed", { detail: filters }));
+    };
+
+    const setupFilter = (type) => {
+      const wrapper = document.querySelector(`[data-filter="${type}"]`);
+      if (!wrapper) return;
+
+      /** @type {HTMLButtonElement|null} */
+      const trigger = wrapper.querySelector("[data-filter-trigger]");
+      const menu = wrapper.querySelector("[data-filter-menu]");
+
+      if (!trigger || !menu) return;
+
+      // abrir/cerrar menú
+      trigger.addEventListener("click", (event) => {
+        event.stopPropagation();
+        closeAllFilterMenus();
+        menu.classList.toggle("hidden");
+      });
+
+      // Delegación: funciona para opciones estáticas + dinámicas
+      menu.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+
+        const opt = target.closest("[data-filter-option]");
+        if (!opt) return;
+
+        event.stopPropagation();
+
+        const value = opt.getAttribute("data-value") || "all";
+        const labelEl = trigger.querySelector("[data-filter-label]");
+        if (labelEl) labelEl.textContent = (opt.textContent || "").trim();
+
+        trigger.setAttribute("data-filter-value", value);
+
+        // si eligen algo que no es "range", limpiar rango personalizado
+        if (type === "date" && value !== "range") {
+          trigger.removeAttribute("data-range-from");
+          trigger.removeAttribute("data-range-to");
+        }
+
+        // limpiar búsqueda de servidor
+        if (type === "server") {
+          const searchInput = wrapper.querySelector("[data-server-search]");
+          if (searchInput instanceof HTMLInputElement) searchInput.value = "";
+
+          wrapper
+            .querySelectorAll("[data-server-option]")
+            .forEach((btn) => btn.classList.remove("hidden"));
+
+          const emptyEl = wrapper.querySelector("[data-server-empty]");
+          emptyEl?.classList.add("hidden");
+        }
+
+        menu.classList.add("hidden");
+        updateFilterSummary();
+      });
+
+      // lógica extra para rango personalizado
+      if (type === "date") {
+        const fromInput = wrapper.querySelector("[data-range-from]");
+        const toInput = wrapper.querySelector("[data-range-to]");
+        const applyBtn = wrapper.querySelector("[data-apply-range]");
+
+        if (fromInput && toInput) {
+          ["click", "mousedown"].forEach((evtName) => {
+            fromInput.addEventListener(evtName, (e) => e.stopPropagation());
+            toInput.addEventListener(evtName, (e) => e.stopPropagation());
+          });
+        }
+
+        if (applyBtn && fromInput && toInput) {
+          applyBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const from = /** @type {HTMLInputElement} */ (fromInput).value;
+            const to = /** @type {HTMLInputElement} */ (toInput).value;
+
+            if (!from || !to) {
+              menu.classList.add("hidden");
+              return;
+            }
+
+            const labelEl = trigger.querySelector("[data-filter-label]");
+            if (labelEl) labelEl.textContent = "Rango personalizado";
+
+            trigger.setAttribute("data-filter-value", "range");
+            trigger.setAttribute("data-range-from", from);
+            trigger.setAttribute("data-range-to", to);
+
+            menu.classList.add("hidden");
+            updateFilterSummary();
+          });
+        }
+      }
+
+      // Búsqueda para servidores (type-to-search)
+      if (type === "server") {
+        const searchInput = wrapper.querySelector("[data-server-search]");
+        const emptyEl = wrapper.querySelector("[data-server-empty]");
+
+        const applyFilter = () => {
+          if (!(searchInput instanceof HTMLInputElement)) return;
+          const q = searchInput.value.trim().toLowerCase();
+
+          const optionButtons = wrapper.querySelectorAll("[data-server-option]");
+          let visible = 0;
+
+          optionButtons.forEach((btn) => {
+            const text = (btn.textContent || "").toLowerCase();
+            const show = text.includes(q);
+            btn.classList.toggle("hidden", !show);
+            if (show) visible++;
+          });
+
+          if (emptyEl) emptyEl.classList.toggle("hidden", visible !== 0);
+        };
+
+        if (searchInput instanceof HTMLInputElement) {
+          ["click", "mousedown"].forEach((evtName) => {
+            searchInput.addEventListener(evtName, (e) => e.stopPropagation());
+          });
+
+          searchInput.addEventListener("input", applyFilter);
+
+          trigger.addEventListener("click", () => {
+            setTimeout(() => {
+              searchInput.focus();
+              applyFilter();
+            }, 0);
+          });
+        }
+      }
+    };
+
+    // 1) Cargar lista servers en el DOM
+    await loadServersIntoMenu();
+
+    // 2) Setup filtros (después de cargar para que existan opciones)
+    setupFilter("server");
+    setupFilter("date");
+    setupFilter("severity");
+
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (!target.closest("[data-filter]")) closeAllFilterMenus();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeAllFilterMenus();
+    });
+
+    // Estado inicial
+    updateFilterSummary();
+  </script>
+</header>

@@ -1,0 +1,116 @@
+---
+import IconDashboard from "../../icons/nav-dashboard.svg";
+import IconLogs from "../../icons/nav-logs.svg";
+import IconIncidents from "../../icons/nav-incidents.svg";
+import IconEvents from "../../icons/nav-events.svg";
+import IconIps from "../../icons/nav-ips.svg";
+import IconProcesos from "../../icons/nav-processes.svg"; // 🆕 PROCESOS
+import IconRecomendaciones from "../../icons/nav-recomendaciones.svg";
+import IconConfig from "../../icons/nav-config.svg";
+
+type IconMap = {
+  dashboard: typeof IconDashboard;
+  logs: typeof IconLogs;
+  incidentes: typeof IconIncidents;
+  procesos: typeof IconProcesos; // 🆕
+  events: typeof IconEvents;
+  ips: typeof IconIps;
+  api: typeof IconRecomendaciones;
+  config: typeof IconConfig;
+};
+
+const iconMap: IconMap = {
+  dashboard: IconDashboard,
+  logs: IconLogs,
+  incidentes: IconIncidents,
+  procesos: IconProcesos, // 🆕
+  events: IconEvents,
+  ips: IconIps,
+  api: IconRecomendaciones,
+  config: IconConfig,
+};
+
+type NavItemId = keyof IconMap;
+
+interface NavItem {
+  id: NavItemId;
+  label: string;
+  href: string;
+}
+
+const navItems: NavItem[] = [
+  { id: "dashboard", label: "Dashboard", href: "/dashboard" },
+  { id: "logs", label: "Cargar Logs", href: "/dashboard/cargar-logs" },
+  // INCIDENTES
+  { id: "incidentes", label: "Incidentes", href: "/dashboard/incidentes" },
+  { id: "ips", label: "Entidades", href: "/dashboard/entidades" },
+  { id: "events", label: "Alertas Detectados", href: "/dashboard/alertas" },
+      // 🆕 PROCESOS (pipeline / engine / jobs)
+  { id: "procesos", label: "Procesos", href: "/dashboard/procesos" },
+  { id: "api", label: "API", href: "/dashboard/api-keys" },
+  { id: "config", label: "Configuración", href: "/dashboard/configuracion" },
+];
+
+const bottomItem = {
+  label: "Cerrar Sesión",
+  href: "/login",
+  icon: "/svg/nav-logout.svg",
+};
+
+const normalize = (path: string) =>
+  path.replace(/\/+$/, "") || "/";
+
+const currentPath = normalize(Astro.url.pathname);
+---
+
+<aside
+  class="w-[262px] min-h-screen bg-[#20262C] text-[#D6D9DD] flex flex-col border-r border-black/20"
+>
+  <!-- Logo -->
+  <div class="px-6 pt-6 pb-5 flex items-center gap-3 border-b border-black/20">
+    <span class="h-8 w-1 bg-[#E67E22]"></span>
+    <span class="text-2xl font-bold tracking-tight text-[#E67E22]">
+      SentinelX SIEM
+    </span>
+  </div>
+
+  <!-- Navegación -->
+  <nav class="flex-1 px-4 pt-6 pb-4 space-y-2">
+    {navItems.map((item) => {
+      const isActive = normalize(item.href) === currentPath;
+      const Icon = iconMap[item.id];
+
+      return (
+        <a
+          href={item.href}
+          class={`flex items-center gap-5 px-4 py-2.5 rounded-lg text-[16px] transition-colors
+            ${
+              isActive
+                ? "bg-[#2A3138] text-[#E67E22]"
+                : "text-[#D6D9DD] hover:bg-[#2A3138]"
+            }`}
+        >
+          <Icon class="h-6 w-6 shrink-0" />
+          <span>{item.label}</span>
+        </a>
+      );
+    })}
+  </nav>
+
+  <!-- Cerrar sesión -->
+  <div class="px-4 pb-6 border-t border-black/20 pt-4">
+    <a
+      href={bottomItem.href}
+      class="flex items-center gap-4 px-4 py-2.5 rounded-lg text-[16px] text-[#D6D9DD]
+             hover:bg-[#2A3138] transition-colors"
+    >
+      <img
+        src={bottomItem.icon}
+        alt={bottomItem.label}
+        class="h-6 w-6 shrink-0"
+        loading="lazy"
+      />
+      <span>{bottomItem.label}</span>
+    </a>
+  </div>
+</aside>

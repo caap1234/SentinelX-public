@@ -1,0 +1,250 @@
+---
+import DashboardLayout from "../../../layouts/DashboardLayout.astro";
+import HeaderBar from "../../../components/dashboard/HeaderBar.astro";
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000";
+---
+
+<DashboardLayout pageTitle="SentinelX SIEM – Reprocesar eventos">
+  <HeaderBar
+    title="Reprocesar eventos"
+    subtitle="Reconstruye alertas y estados de reglas en un rango de tiempo."
+    showFilters={false}
+  />
+
+  <section class="flex-1 px-8 py-6 space-y-6">
+    <div class="rounded-xl bg-white border border-[#E5E7EB] shadow-sm overflow-hidden">
+      <div class="px-8 py-4 border-b border-[#E5E7EB] flex items-center justify-between gap-3">
+        <h2 class="text-[13px] font-semibold text-[#111827]">Reprocesar</h2>
+
+        <a
+          href="/dashboard/reglas"
+          class="h-10 px-4 rounded-lg border border-[#E5E7EB] bg-white text-[12px] font-semibold
+                hover:bg-[#F9FAFB] transition-colors inline-flex items-center"
+        >
+          Volver a reglas
+        </a>
+      </div>
+
+      <div class="px-8 py-5">
+        <div class="flex items-start justify-between gap-4">
+          <p class="text-[12px] text-[#6B7280] max-w-2xl leading-5">
+            Reprocesa reconstruyendo <span class="font-medium">alerts</span> y <span class="font-medium">rule_states</span>
+            en un rango de tiempo. Operación destructiva: borra alertas previas del rango para esa(s) regla(s).
+          </p>
+          <span id="reprocessStatus" class="text-[12px] text-[#6B7280] mt-1"></span>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <label class="text-[11px] text-[#6B7280]">Rule ID (opcional)</label>
+            <input
+              id="reRuleId"
+              type="number"
+              placeholder="Ej: 12"
+              class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                    placeholder:text-[#9CA3AF]
+                    focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label class="text-[11px] text-[#6B7280]">Server (opcional)</label>
+            <input
+              id="reServer"
+              type="text"
+              placeholder="svlwp359"
+              class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                    placeholder:text-[#9CA3AF]
+                    focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label class="text-[11px] text-[#6B7280]">Inicio (UTC)</label>
+            <input
+              id="reTimeMin"
+              type="datetime-local"
+              class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                    focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label class="text-[11px] text-[#6B7280]">Fin (UTC)</label>
+            <input
+              id="reTimeMax"
+              type="datetime-local"
+              class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                    focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        <div class="mt-3 grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <label class="text-[11px] text-[#6B7280]">Máx. eventos</label>
+            <input
+              id="reMaxEvents"
+              type="number"
+              value="200000"
+              min="1"
+              max="2000000"
+              class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                    focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+            />
+            <p class="mt-1 text-[11px] text-[#9CA3AF] leading-5">
+              Límite de seguridad para evitar reprocesos gigantes.
+            </p>
+          </div>
+
+          <div class="md:col-span-3 flex flex-wrap items-end gap-2">
+            <button
+              type="button"
+              id="setLast24hBtn"
+              class="h-10 px-4 rounded-lg border border-[#E5E7EB] bg-white text-[12px] font-semibold
+                    hover:bg-[#F9FAFB] transition-colors"
+            >
+              Últimas 24h
+            </button>
+
+            <button
+              type="button"
+              id="setLast7dBtn"
+              class="h-10 px-4 rounded-lg border border-[#E5E7EB] bg-white text-[12px] font-semibold
+                    hover:bg-[#F9FAFB] transition-colors"
+            >
+              Últimos 7 días
+            </button>
+
+            <button
+              type="button"
+              id="runReprocessBtn"
+              class="h-10 px-6 rounded-lg bg-[#F97316] text-white text-[12px] font-semibold
+                    hover:bg-[#EA580C] transition-colors"
+            >
+              Reprocesar
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
+          <pre id="reprocessOutput" class="text-[11px] text-[#374151] whitespace-pre-wrap">—</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" define:vars={{ API_BASE }}>
+    const token =
+      localStorage.getItem("sentinelx_token") ||
+      sessionStorage.getItem("sentinelx_token");
+
+    if (!token) window.location.href = "/login";
+
+    const authHeaders = () => ({
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    });
+
+    const handleAuthErrors = async (res) => {
+      if (res.status === 401) {
+        localStorage.removeItem("sentinelx_token");
+        sessionStorage.removeItem("sentinelx_token");
+        window.location.href = "/login";
+        return true;
+      }
+      return false;
+    };
+
+    const reRuleId = document.getElementById("reRuleId");
+    const reServer = document.getElementById("reServer");
+    const reTimeMin = document.getElementById("reTimeMin");
+    const reTimeMax = document.getElementById("reTimeMax");
+    const reMaxEvents = document.getElementById("reMaxEvents");
+
+    const setLast24hBtn = document.getElementById("setLast24hBtn");
+    const setLast7dBtn = document.getElementById("setLast7dBtn");
+    const runReprocessBtn = document.getElementById("runReprocessBtn");
+
+    const reprocessStatus = document.getElementById("reprocessStatus");
+    const reprocessOutput = document.getElementById("reprocessOutput");
+
+    function toUtcIsoFromLocalInput(el) {
+      const v = (el?.value || "").trim();
+      if (!v) return null;
+      // datetime-local no trae zona; lo tratamos como UTC para ser consistentes
+      return new Date(v + ":00Z").toISOString();
+    }
+
+    function setRangeLast(hours) {
+      const now = new Date();
+      const end = new Date(now.getTime());
+      const start = new Date(now.getTime() - hours * 3600 * 1000);
+
+      const fmt = (d) => {
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+      };
+
+      if (reTimeMin) reTimeMin.value = fmt(start);
+      if (reTimeMax) reTimeMax.value = fmt(end);
+    }
+
+    setLast24hBtn?.addEventListener("click", () => setRangeLast(24));
+    setLast7dBtn?.addEventListener("click", () => setRangeLast(24 * 7));
+    setRangeLast(24);
+
+    runReprocessBtn?.addEventListener("click", async () => {
+      try {
+        const tmin = toUtcIsoFromLocalInput(reTimeMin);
+        const tmax = toUtcIsoFromLocalInput(reTimeMax);
+
+        if (!tmin || !tmax) {
+          alert("Selecciona inicio y fin (UTC).");
+          return;
+        }
+
+        const maxEvents = Number(reMaxEvents?.value || 200000) || 200000;
+        const ruleIdVal = (reRuleId?.value || "").trim();
+        const serverVal = (reServer?.value || "").trim();
+
+        const payload = {
+          rule_id: ruleIdVal ? Number(ruleIdVal) : null,
+          server: serverVal || null,
+          time_min: tmin,
+          time_max: tmax,
+          max_events: maxEvents,
+        };
+
+        if (!confirm("Esto borrará alertas existentes en el rango para reconstruir. ¿Continuar?")) return;
+
+        if (reprocessStatus) reprocessStatus.textContent = "Reprocesando…";
+        if (reprocessOutput) reprocessOutput.textContent = "—";
+
+        const res = await fetch(`${API_BASE}/rules-v2/reprocess`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify(payload),
+        });
+
+        if (await handleAuthErrors(res)) return;
+        if (res.status === 403) {
+          alert("Acceso denegado. Solo Admin.");
+          if (reprocessStatus) reprocessStatus.textContent = "";
+          return;
+        }
+        if (!res.ok) throw new Error(await res.text());
+
+        const data = await res.json();
+        if (reprocessStatus) reprocessStatus.textContent = "Listo.";
+        if (reprocessOutput) reprocessOutput.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        console.error(err);
+        if (reprocessStatus) reprocessStatus.textContent = "Error.";
+        alert("No se pudo reprocesar.");
+      }
+    });
+  </script>
+</DashboardLayout>

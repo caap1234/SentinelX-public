@@ -1,0 +1,219 @@
+---
+import LandingLayout from "../layouts/LandingLayout.astro";
+---
+
+<LandingLayout>
+  <!-- HEADER -->
+  <header class="w-full h-20 px-6 py-5 flex items-center justify-between bg-[#0C0F13]/95 border-b border-[#0C0F13]">
+    <div class="flex items-center gap-3">
+      <span class="h-9 w-1 bg-[#E67E22]"></span>
+      <span class="text-2xl font-bold tracking-tight text-[#E67E22]">
+        SentinelX SIEM
+      </span>
+    </div>
+    <a href="/login" class="h-10 w-34 px-4 py-2 rounded-md bg-[#E67E22] text-md font-medium text-[#0A0C0F] shadow-md hover:bg-[#D35400] transition-colors">
+        Iniciar Sesión
+    </a>
+  </header>
+
+  <!-- HERO -->
+  <section
+    class="flex-1 w-full text-[#D6D9DD]"
+    style="background: linear-gradient(180deg, #0A0C0F 0%, #12171C 100%);"
+  >
+    <div class="mx-auto px-10 py-16 lg:py-20 grid lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-10 lg:gap-16 items-center text-left">
+      <!-- Columna izquierda: texto principal -->
+      <div class="space-y-8 w-2xl pl-10">
+        <h1 class="text-5xl sm:text-5xl lg:text-[3.5rem] font-semibold text-[#D6D9DD]">
+          Una nueva forma de
+          analizar seguridad.
+          <br />
+          Carga logs.
+          <span class="text-[#E67E22]">Detecta amenazas.</span>
+          Toma decisiones.
+        </h1>
+
+        <div class="w-[600px]">
+          <p class="font-normal text-[18px] text-slate-300">
+            SentinelX SIEM analiza tus archivos de log para identificar patrones
+            maliciosos, IPs sospechosas, intentos de fuerza bruta, bots y
+            actividades que representen riesgo para tu infraestructura.
+          </p>
+        </div>
+
+        <a href="/login" class="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-[#E67E22] text-sm sm:text-base font-semibold text-[#0A0C0F] shadow-lg shadow-black/40 hover:bg-[#D35400] transition-colors">
+          Acceder al Sistema
+        </a>
+      </div>
+
+      <!-- Columna derecha: cards -->
+      <div class="mt-10 lg:mt-0 relative lg:h-[420px] flex flex-col gap-6 lg:block">
+        <!-- Card Resumen de actividad -->
+        <div
+          class="w-full max-w-[360px] mx-auto rounded-2xl bg-[#171C21] border border-[#2A3038] px-6 py-5 flex flex-col gap-4 backdrop-blur-sm
+                lg:mx-0 lg:absolute lg:left-0 lg:top-0"
+        >
+          <h2 class="text-base font-semibold text-center text-[#D6D9DD] mb-1">
+            Resumen de actividad
+          </h2>
+
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <ul class="space-y-2 text-sm text-slate-300">
+              <li class="flex items-center gap-2">
+                <span class="h-1.5 w-1.5 rounded-full bg-[#E67E22]"></span>
+                <span>IPs sospechosas: <strong>12</strong></span>
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="h-1.5 w-1.5 rounded-full bg-[#E67E22]"></span>
+                <span>Intentos de fuerza bruta: <strong>24</strong></span>
+              </li>
+            </ul>
+
+            <!-- Mini gráfica -->
+            <div class="relative w-[150px] mt-2 md:mt-0">
+              <div class="flex items-end gap-1.5">
+                <span class="w-3.5 rounded-sm bg-[#E67E22] h-[82px]"></span>
+                <span class="w-3.5 rounded-sm bg-[#E67E22] h-[30px]"></span>
+                <span class="w-3.5 rounded-sm bg-[#E67E22] h-[45px]"></span>
+                <span class="w-3.5 rounded-sm bg-[#E67E22] h-5"></span>
+                <span class="w-3.5 rounded-sm bg-[#E67E22] h-[55px]"></span>
+                <span class="w-3.5 rounded-sm bg-[#E67E22] h-[41px]"></span>
+              </div>
+
+              <span class="absolute bottom-0 left-0 w-[180px] bg-[#2A3038] h-0.5"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card Eventos recientes -->
+        <div
+          class="w-full max-w-[485px] mx-auto rounded-xl bg-[#1E252C] flex flex-col px-6 py-[18px]
+                lg:mx-0 lg:absolute lg:right-0 lg:bottom-0"
+        >
+          <h2 class="text-[18px] font-semibold text-center text-[#D6D9DD] mb-4">
+            Eventos recientes
+          </h2>
+
+          <div class="grid grid-cols-[1.2fr_1.4fr_1fr] text-sm mb-3">
+            <span class="text-[#E67E22]">IP</span>
+            <span class="text-[#E67E22]">Tipo</span>
+            <span class="text-right text-[#E67E22]">Severidad</span>
+          </div>
+
+          <div class="space-y-[15px] text-sm">
+            <div class="grid grid-cols-[1.2fr_1.4fr_1fr] items-center">
+              <span class="text-[#D6D9DD]">189.220.32.10</span>
+              <span class="text-[#AEB4BC]">Login fallido</span>
+              <span class="flex justify-end">
+                <span class="h-4 w-4 rounded-full bg-[#C0392B]"></span>
+              </span>
+            </div>
+
+            <div class="grid grid-cols-[1.2fr_1.4fr_1fr] items-center">
+              <span class="text-[#D6D9DD]">200.33.122.54</span>
+              <span class="text-[#AEB4BC]">Bot sospechoso</span>
+              <span class="flex justify-end">
+                <span class="h-4 w-4 rounded-full bg-[#F0B400]"></span>
+              </span>
+            </div>
+
+            <div class="grid grid-cols-[1.2fr_1.4fr_1fr] items-center">
+              <span class="text-[#D6D9DD]">45.82.14.22</span>
+              <span class="text-[#AEB4BC]">Peticiones masivas</span>
+              <span class="flex justify-end">
+                <span class="h-4 w-4 rounded-full bg-[#E67E22]"></span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<!-- SECCIÓN: ¿Qué es SentinelX SIEM? -->
+<section class="w-full bg-[#101317] py-20">
+  <div class="max-w-[1440px] mx-auto px-6 lg:px-16">
+
+    <!-- Título + descripción -->
+    <div class="text-center mb-14">
+      <h2 class="text-[46px] font-extrabold text-[#D6D9DD] mb-4">
+        ¿Qué es SentinelX SIEM?
+      </h2>
+      <p class="max-w-3xl mx-auto text-[20px] font-normal leading-relaxed text-[#AEB4BC]">
+        Una plataforma de análisis de logs diseñada para detectar amenazas,
+        visualizar patrones y reforzar la seguridad de tu infraestructura.
+      </p>
+    </div>
+
+    <!-- Cards -->
+    <div class="grid gap-x-[18px] gap-y-[34px] md:grid-cols-3 justify-items-center">
+      <!-- Card 1 -->
+      <article
+        class="w-full md:w-[360px] md:h-[260px] rounded-[14px] bg-[#171C21] border border-[#2A3038]
+              px-6 py-4 flex flex-col items-center text-center gap-4"
+      >
+        <img
+          src="/svg/log.svg"
+          alt="Análisis de logs"
+          class="h-[60px] w-[60px]"
+          loading="lazy"
+        />
+        <h3 class="text-[22px] font-semibold text-[#D6D9DD]">
+          Análisis de logs
+        </h3>
+        <p class="text-sm leading-relaxed text-[#AEB4BC]">
+          Carga archivos .log o .txt y obtén análisis automatizado para detectar
+          patrones anómalos, comportamientos sospechosos y eventos críticos.
+        </p>
+      </article>
+
+      <!-- Card 2 -->
+      <article
+        class="w-full md:w-[360px] md:h-[260px] rounded-[14px] bg-[#171C21] border border-[#2A3038]
+              px-6 py-4 flex flex-col items-center text-center gap-4"
+      >
+        <img
+          src="/svg/amenazas.svg"
+          alt="Detección de amenazas"
+          class="h-[60px] w-[60px]"
+          loading="lazy"
+        />
+        <h3 class="text-[22px] font-semibold text-[#D6D9DD]">
+          Detección de amenazas
+        </h3>
+        <p class="text-sm leading-relaxed text-[#AEB4BC]">
+          Identifica ataques de fuerza bruta, bots, escaneos de puertos, DDoS,
+          accesos no autorizados y patrones maliciosos en tus sistemas.
+        </p>
+      </article>
+
+      <!-- Card 3 -->
+      <article
+        class="w-full md:w-[360px] md:h-[260px] rounded-[14px] bg-[#171C21] border border-[#2A3038]
+              px-6 py-4 flex flex-col items-center text-center gap-4"
+      >
+        <img
+          src="/svg/escudo.svg"
+          alt="Recomendaciones de seguridad"
+          class="h-[60px] w-[60px]"
+          loading="lazy"
+        />
+        <h3 class="text-[22px] font-semibold text-[#D6D9DD]">
+          Recomendaciones de Seguridad
+        </h3>
+        <p class="text-sm leading-relaxed text-[#AEB4BC]">
+          Recibe sugerencias concretas para mejorar tu seguridad, mitigar
+          vulnerabilidades y reforzar la protección de tus servidores.
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="w-[1440px] h-[60px] bg-[#0A0C0F]">
+    <!-- Footer pequeño -->
+    <div class="mt-10 text-xs text-slate-500 text-center pb-6">
+      © 2025 SentinelX SIEM — Plataforma de análisis de logs y seguridad.
+    </div>
+</section>
+</LandingLayout>

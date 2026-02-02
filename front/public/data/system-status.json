@@ -1,0 +1,33 @@
+[
+  {
+    "component": "Ingesta de logs",
+    "status": "Operando",
+    "detail": "6 fuentes activas, cola: 3 pendientes",
+    "statusCode": "ok"
+  },
+  {
+    "component": "Parsers cPanel / DirectAdmin",
+    "status": "Sincronizados",
+    "detail": "8/8 parsers activos (access_log, error_log, Exim, Dovecot)",
+    "statusCode": "ok"
+  },
+  {
+    "component": "Motor de correlación",
+    "status": "Latencia moderada",
+    "detail": "Tiempo medio de correlación: 320 ms",
+    "statusCode": "warning"
+  },
+  {
+    "component": "Alertas y notificaciones",
+    "status": "Incidencias",
+    "detail": "2 alertas no entregadas (falla SMTP)",
+    "statusCode": "error"
+  },
+  {
+    "component": "Almacenamiento de eventos",
+    "status": "Capacidad estable",
+    "detail": "Uso de disco: 61% en partición de logs",
+    "statusCode": "ok"
+  }
+]
+

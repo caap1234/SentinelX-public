@@ -1,0 +1,126 @@
+# =========================
+# Python / FastAPI
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtualenv / env
+.venv/
+venv/
+.env
+.env.*
+.envrc
+
+# =========================
+# Testing / tooling
+# =========================
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# =========================
+# Runtime / SIEM data
+# =========================
+*.log
+logs/
+tmp/
+uploads/
+uploaded_logs/
+raw_logs/
+
+# Comprimidos (logs / artefactos)
+*.gz
+*.zip
+*.tgz
+
+# =========================
+# Alembic
+# =========================
+alembic/versions/*.pyc
+alembic/versions/__pycache__/
+
+# ⚠️ IMPORTANTE:
+# NO ignorar alembic/versions/*.py
+# Las migraciones SÍ deben versionarse
+
+# =========================
+# PostgreSQL / Backups (NO subir)
+# =========================
+backups/
+*.sql.gz
+*.dump
+*.bak
+*.backup
+
+# =========================
+# PostgreSQL init scripts (SÍ subir)
+# =========================
+!postgres/
+!postgres/**
+
+# =========================
+# GeoIP (NO subir bases .mmdb)
+# =========================
+geoip/*.mmdb
+geoip/*.mmdb.*
+!geoip/
+!geoip/**
+
+# =========================
+# Docker
+# =========================
+docker-compose.yml
+docker-compose.override.yml
+
+# El example SÍ se versiona
+!docker-compose.example.yml
+
+# =========================
+# Frontend (Astro / Node)
+# =========================
+node_modules/
+dist/
+.astro/
+.cache/
+.turbo/
+.vercel/
+.netlify/
+.output/
+
+front/node_modules/
+front/dist/
+front/.astro/
+front/.cache/
+front/.turbo/
+front/.vercel/
+front/.netlify/
+front/.output/
+
+frontend/node_modules/
+frontend/dist/
+frontend/.astro/
+
+# Frontend env / logs
+front/.env
+front/.env.*
+frontend/.env
+frontend/.env.*
+front/*.log
+frontend/*.log
+
+# =========================
+# Editor / OS
+# =========================
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# =========================
+# Public HTML (deploy artefacts)
+# =========================
+public_html/
+

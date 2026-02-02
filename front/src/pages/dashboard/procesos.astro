@@ -1,0 +1,564 @@
+---
+// src/pages/dashboard/procesos.astro
+import DashboardLayout from "../../layouts/DashboardLayout.astro";
+import HeaderBar from "../../components/dashboard/HeaderBar.astro";
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000";
+---
+
+<DashboardLayout pageTitle="SentinelX SIEM – Procesos">
+  <HeaderBar
+    title="Procesos"
+    subtitle="Estado de colas (parsing/engine) y control operativo (pausar/reanudar/reprocesar)."
+    showFilters={false}
+    showServerFilter={false}
+    showDateFilter={false}
+    showSeverityFilter={false}
+  />
+
+  <section class="flex-1 px-8 py-6 space-y-6">
+    <!-- KPIs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+      <div class="rounded-xl bg-white border border-[#E5E7EB] px-5 py-4 shadow-sm">
+        <p class="text-[11px] uppercase tracking-wide text-[#9CA3AF]">Queued uploads</p>
+        <p class="mt-2 text-2xl font-semibold text-[#111827]" data-kpi-queued>0</p>
+        <p class="mt-1 text-[11px] text-[#6B7280]" data-kpi-queued-oldest>—</p>
+      </div>
+
+      <div class="rounded-xl bg-white border border-[#E5E7EB] px-5 py-4 shadow-sm">
+        <p class="text-[11px] uppercase tracking-wide text-[#9CA3AF]">Parsing</p>
+        <p class="mt-2 text-2xl font-semibold text-[#111827]" data-kpi-parsing>0</p>
+        <p class="mt-1 text-[11px] text-[#6B7280]" data-kpi-parsing-note>—</p>
+      </div>
+
+      <div class="rounded-xl bg-white border border-[#E5E7EB] px-5 py-4 shadow-sm">
+        <p class="text-[11px] uppercase tracking-wide text-[#9CA3AF]">Engine pending</p>
+        <p class="mt-2 text-2xl font-semibold text-[#111827]" data-kpi-engine-pending>0</p>
+        <p class="mt-1 text-[11px] text-[#6B7280]" data-kpi-engine-oldest>—</p>
+      </div>
+
+      <div class="rounded-xl bg-white border border-[#E5E7EB] px-5 py-4 shadow-sm">
+        <p class="text-[11px] uppercase tracking-wide text-[#9CA3AF]">Engine processing</p>
+        <p class="mt-2 text-2xl font-semibold text-[#111827]" data-kpi-engine-processing>0</p>
+        <p class="mt-1 text-[11px] text-[#6B7280]">En ejecución</p>
+      </div>
+
+      <div class="rounded-xl bg-white border border-[#E5E7EB] px-5 py-4 shadow-sm">
+        <p class="text-[11px] uppercase tracking-wide text-[#9CA3AF]">Alertas (24h)</p>
+        <p class="mt-2 text-2xl font-semibold text-[#111827]" data-kpi-alerts-24h>0</p>
+      </div>
+
+      <div class="rounded-xl bg-white border border-[#E5E7EB] px-5 py-4 shadow-sm">
+        <p class="text-[11px] uppercase tracking-wide text-[#9CA3AF]">Incidentes (24h)</p>
+        <p class="mt-2 text-2xl font-semibold text-[#111827]" data-kpi-incidents-24h>0</p>
+      </div>
+    </div>
+
+    <!-- Controles -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="rounded-xl bg-white border border-[#E5E7EB] px-6 py-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-semibold text-[#111827]">Parsing</p>
+            <p class="text-[11px] text-[#6B7280] mt-1">Pausar/reanudar ingestion + parse de uploads.</p>
+          </div>
+          <button type="button" class="toggle-btn" data-toggle="pipeline.parsing.enabled">—</button>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">max_per_cycle</label>
+            <input class="ctl-input" type="number" min="1" data-setting="pipeline.parsing.max_per_cycle" placeholder="(env)" />
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">poll_seconds</label>
+            <input class="ctl-input" type="number" min="1" data-setting="pipeline.parsing.poll_seconds" placeholder="(env)" />
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button type="button" class="action-btn" data-action="parsing_requeue_errors">Requeue errores (parsing)</button>
+        </div>
+
+        <p class="mt-3 text-[12px] text-[#6B7280]" data-parsing-msg></p>
+      </div>
+
+      <div class="rounded-xl bg-white border border-[#E5E7EB] px-6 py-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-semibold text-[#111827]">Engine</p>
+            <p class="text-[11px] text-[#6B7280] mt-1">Pausar/reanudar correlación de reglas sobre events.</p>
+          </div>
+          <button type="button" class="toggle-btn" data-toggle="pipeline.engine.enabled">—</button>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">max_per_cycle</label>
+            <input class="ctl-input" type="number" min="1" data-setting="pipeline.engine.max_per_cycle" placeholder="(env)" />
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">poll_seconds</label>
+            <input class="ctl-input" type="number" min="1" data-setting="pipeline.engine.poll_seconds" placeholder="(env)" />
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button type="button" class="action-btn" data-action="engine_requeue_errors">Requeue errores (engine)</button>
+        </div>
+
+        <p class="mt-3 text-[12px] text-[#6B7280]" data-engine-msg></p>
+      </div>
+
+      <div class="rounded-xl bg-white border border-[#E5E7EB] px-6 py-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-semibold text-[#111827]">Jobs</p>
+            <p class="text-[11px] text-[#6B7280] mt-1">Control de entities/incidents (cron sigue igual).</p>
+          </div>
+        </div>
+
+        <div class="mt-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-[12px] font-semibold text-[#111827]">Entities job</p>
+              <p class="text-[11px] text-[#6B7280]">Respeta jobs.entities.enabled</p>
+            </div>
+            <button type="button" class="toggle-btn" data-toggle="jobs.entities.enabled">—</button>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-[12px] font-semibold text-[#111827]">Incidents job</p>
+              <p class="text-[11px] text-[#6B7280]">Respeta jobs.incidents.enabled</p>
+            </div>
+            <button type="button" class="toggle-btn" data-toggle="jobs.incidents.enabled">—</button>
+          </div>
+        </div>
+
+        <p class="mt-3 text-[12px] text-[#6B7280]" data-jobs-msg></p>
+      </div>
+    </div>
+
+    <!-- Tablas -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="rounded-xl bg-white border border-[#E5E7EB] px-6 py-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-semibold text-[#111827]">Uploads pendientes / en proceso</p>
+            <p class="text-[11px] text-[#6B7280] mt-1">queued/parsing/parsed/processing_engine</p>
+          </div>
+          <button type="button" class="inline-flex items-center px-4 py-2 rounded-full border border-[#D1D5DB] text-[12px] text-[#374151] hover:bg-[#F3F4F6]" data-refresh>
+            Refrescar
+          </button>
+        </div>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="min-w-full text-xs">
+            <thead>
+              <tr class="text-[#6B7280] border-b border-[#E5E7EB]">
+                <th class="py-3 px-3 text-left">ID</th>
+                <th class="py-3 px-3 text-left">Server</th>
+                <th class="py-3 px-3 text-left">Archivo</th>
+                <th class="py-3 px-3 text-center">Status</th>
+                <th class="py-3 px-3 text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody class="text-[#4B5563]" data-upload-body></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rounded-xl bg-white border border-[#E5E7EB] px-6 py-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-semibold text-[#111827]">Cola de Engine (events)</p>
+            <p class="text-[11px] text-[#6B7280] mt-1">pending/processing/error</p>
+          </div>
+          <button type="button" class="inline-flex items-center px-4 py-2 rounded-full border border-[#D1D5DB] text-[12px] text-[#374151] hover:bg-[#F3F4F6]" data-refresh>
+            Refrescar
+          </button>
+        </div>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="min-w-full text-xs">
+            <thead>
+              <tr class="text-[#6B7280] border-b border-[#E5E7EB]">
+                <th class="py-3 px-3 text-left">Event</th>
+                <th class="py-3 px-3 text-left">Server</th>
+                <th class="py-3 px-3 text-center">Status</th>
+                <th class="py-3 px-3 text-center">Attempts</th>
+                <th class="py-3 px-3 text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody class="text-[#4B5563]" data-event-body></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <style>
+    .toggle-btn{
+      height: 34px;
+      padding: 0 14px;
+      border-radius: 9999px;
+      border: 1px solid #E5E7EB;
+      font-size: 12px;
+      color: #111827;
+      background: white;
+    }
+    .toggle-btn.on{
+      border-color:#111827;
+      background:#111827;
+      color:white;
+    }
+    .ctl-input{
+      width: 100%;
+      height: 40px;
+      border-radius: 9999px;
+      border: 1px solid #D1D5DB;
+      background: white;
+      padding: 0 14px;
+      font-size: 13px;
+      color:#111827;
+      outline: none;
+    }
+    .ctl-input:focus{
+      border-color: transparent;
+      box-shadow: 0 0 0 2px rgba(230,126,34,.7);
+    }
+    .action-btn{
+      display:inline-flex;
+      align-items:center;
+      padding: 8px 14px;
+      border-radius: 9999px;
+      border: 1px solid #E67E22;
+      color:#E67E22;
+      font-size: 12px;
+      background: #FFF7ED;
+    }
+    .action-btn:hover{ filter: brightness(0.98); }
+    .mini-btn{
+      display:inline-flex;
+      align-items:center;
+      padding: 6px 10px;
+      border-radius: 9999px;
+      border: 1px solid #D1D5DB;
+      font-size: 11px;
+      color:#374151;
+    }
+    .mini-btn:hover{ background:#F3F4F6; }
+    .status-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      border: 1px solid #E5E7EB;
+      color:#374151;
+      background:#F9FAFB;
+      white-space:nowrap;
+    }
+  </style>
+
+  <script type="module" define:vars={{ API_BASE }}>
+    const getToken = () => localStorage.getItem("sentinelx_token");
+    const el = (sel) => document.querySelector(sel);
+
+    const kpiQueued = el("[data-kpi-queued]");
+    const kpiQueuedOldest = el("[data-kpi-queued-oldest]");
+    const kpiParsing = el("[data-kpi-parsing]");
+    const kpiParsingNote = el("[data-kpi-parsing-note]");
+    const kpiEnginePending = el("[data-kpi-engine-pending]");
+    const kpiEngineOldest = el("[data-kpi-engine-oldest]");
+    const kpiEngineProcessing = el("[data-kpi-engine-processing]");
+    const kpiAlerts24h = el("[data-kpi-alerts-24h]");
+    const kpiIncidents24h = el("[data-kpi-incidents-24h]");
+
+    const uploadBody = el("[data-upload-body]");
+    const eventBody = el("[data-event-body]");
+
+    const parsingMsg = el("[data-parsing-msg]");
+    const engineMsg = el("[data-engine-msg]");
+    const jobsMsg = el("[data-jobs-msg]");
+
+    const toggleBtns = Array.from(document.querySelectorAll("button[data-toggle]"));
+    const settingInputs = Array.from(document.querySelectorAll("input[data-setting]"));
+    const actionBtns = Array.from(document.querySelectorAll("button[data-action]"));
+    const refreshBtns = Array.from(document.querySelectorAll("button[data-refresh]"));
+
+    let overview = null;
+    let refreshing = false;
+
+    const fmtIso = (iso) => {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return String(iso);
+      return d.toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
+    };
+
+    const setToggleState = (btn, on) => {
+      btn.classList.toggle("on", !!on);
+      btn.textContent = on ? "Enabled" : "Paused";
+    };
+
+    const setRefreshingUI = (on) => {
+      for (const b of refreshBtns) b.disabled = !!on;
+      if (on) {
+        for (const b of refreshBtns) b.classList.add("opacity-60", "cursor-not-allowed");
+      } else {
+        for (const b of refreshBtns) b.classList.remove("opacity-60", "cursor-not-allowed");
+      }
+    };
+
+    async function apiGetOverview() {
+      const token = getToken();
+      if (!token) { window.location.href = "/login"; return; }
+
+      const res = await fetch(`${API_BASE}/processes/overview`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return await res.json();
+    }
+
+    async function apiPatchControl(updates) {
+      const token = getToken();
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE}/processes/control`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ updates }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return await res.json();
+    }
+
+    async function apiAction(action, extra = {}) {
+      const token = getToken();
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE}/processes/actions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action, ...extra }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return await res.json();
+    }
+
+    function renderTables() {
+      if (!overview) return;
+
+      // uploads
+      if (uploadBody) {
+        uploadBody.innerHTML = "";
+        const items = Array.isArray(overview.pending_uploads) ? overview.pending_uploads : [];
+
+        if (!items.length) {
+          uploadBody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-[11px] text-[#9CA3AF]">Sin uploads pendientes.</td></tr>`;
+        } else {
+          for (const u of items) {
+            const tr = document.createElement("tr");
+            tr.className = "border-b border-[#F3F4F6]";
+            tr.innerHTML = `
+              <td class="py-3 px-3 text-left">${u.id}</td>
+              <td class="py-3 px-3 text-left">${u.server || ""}</td>
+              <td class="py-3 px-3 text-left max-w-[220px] truncate" title="${(u.filename || "")}">${(u.filename || "")}</td>
+              <td class="py-3 px-3 text-center"><span class="status-pill">${u.status || ""}</span></td>
+              <td class="py-3 px-3 text-center">
+                <button type="button" class="mini-btn" data-requeue-upload="${u.id}">Requeue</button>
+                <button type="button" class="mini-btn" data-reprocess-upload="${u.id}">Reprocess limpio</button>
+              </td>
+            `;
+            uploadBody.appendChild(tr);
+          }
+        }
+      }
+
+      // events
+      if (eventBody) {
+        eventBody.innerHTML = "";
+        const items = Array.isArray(overview.queue_events) ? overview.queue_events : [];
+
+        if (!items.length) {
+          eventBody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-[11px] text-[#9CA3AF]">Sin eventos en cola.</td></tr>`;
+        } else {
+          for (const e of items) {
+            const tr = document.createElement("tr");
+            tr.className = "border-b border-[#F3F4F6]";
+            const shortId = String(e.id || "").slice(0, 8);
+            tr.innerHTML = `
+              <td class="py-3 px-3 text-left" title="${e.id}">${shortId}</td>
+              <td class="py-3 px-3 text-left">${e.server || ""}</td>
+              <td class="py-3 px-3 text-center"><span class="status-pill">${e.engine_status || ""}</span></td>
+              <td class="py-3 px-3 text-center">${e.engine_attempts || 0}</td>
+              <td class="py-3 px-3 text-center">
+                ${e.log_upload_id ? `<button type="button" class="mini-btn" data-requeue-engine-upload="${e.log_upload_id}">Requeue upload</button>` : ""}
+              </td>
+            `;
+            eventBody.appendChild(tr);
+          }
+        }
+      }
+    }
+
+    function renderKpis() {
+      if (!overview) return;
+      const ub = overview.uploads_by_status || {};
+      const eb = overview.events_by_engine_status || {};
+
+      const queued = Number(ub.queued || 0);
+      const parsing = Number(ub.parsing || 0);
+
+      const ep = Number(eb.pending || 0);
+      const eproc = Number(eb.processing || 0);
+
+      if (kpiQueued) kpiQueued.textContent = String(queued);
+      if (kpiParsing) kpiParsing.textContent = String(parsing);
+
+      if (kpiEnginePending) kpiEnginePending.textContent = String(ep);
+      if (kpiEngineProcessing) kpiEngineProcessing.textContent = String(eproc);
+
+      if (kpiAlerts24h) kpiAlerts24h.textContent = String(overview.alerts_24h || 0);
+      if (kpiIncidents24h) kpiIncidents24h.textContent = String(overview.incidents_24h || 0);
+
+      if (kpiQueuedOldest) kpiQueuedOldest.textContent = `Oldest: ${fmtIso(overview.oldest_upload_queued_at)}`;
+      if (kpiEngineOldest) kpiEngineOldest.textContent = `Oldest: ${fmtIso(overview.oldest_event_pending_at)}`;
+
+      if (kpiParsingNote) kpiParsingNote.textContent = `Errores: ${Number(ub.error || 0)}`;
+
+      // toggles + inputs
+      const s = overview.settings || {};
+      for (const btn of toggleBtns) {
+        const key = btn.getAttribute("data-toggle");
+        const on = String(s[key] || "0") === "1";
+        setToggleState(btn, on);
+      }
+      for (const input of settingInputs) {
+        const key = input.getAttribute("data-setting");
+        const val = String(s[key] || "");
+        input.value = (val && val !== "0") ? val : "";
+      }
+    }
+
+    async function refresh() {
+      if (refreshing) return;
+      refreshing = true;
+      setRefreshingUI(true);
+      try {
+        overview = await apiGetOverview();
+        renderKpis();
+        renderTables();
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setRefreshingUI(false);
+        refreshing = false;
+      }
+    }
+
+    toggleBtns.forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const key = btn.getAttribute("data-toggle");
+        if (!key) return;
+        const isOn = btn.classList.contains("on");
+        const next = isOn ? "0" : "1";
+        try {
+          await apiPatchControl({ [key]: next });
+          await refresh();
+          if (jobsMsg) jobsMsg.textContent = "Actualizado";
+        } catch (e) {
+          console.error(e);
+          if (jobsMsg) jobsMsg.textContent = "Error al actualizar.";
+        }
+      });
+    });
+
+    settingInputs.forEach((inp) => {
+      inp.addEventListener("change", async () => {
+        const key = inp.getAttribute("data-setting");
+        if (!key) return;
+        const v = String(inp.value || "").trim();
+        try {
+          await apiPatchControl({ [key]: v || "" });
+          await refresh();
+        } catch (e) {
+          console.error(e);
+        }
+      });
+    });
+
+    actionBtns.forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const action = btn.getAttribute("data-action");
+        if (!action) return;
+        try {
+          if (action === "parsing_requeue_errors") {
+            if (parsingMsg) parsingMsg.textContent = "Requeue...";
+            await apiAction("parsing_requeue_errors", { limit: 100 });
+            if (parsingMsg) parsingMsg.textContent = "Listo";
+          }
+          if (action === "engine_requeue_errors") {
+            if (engineMsg) engineMsg.textContent = "Requeue...";
+            await apiAction("engine_requeue_errors", { limit: 1000 });
+            if (engineMsg) engineMsg.textContent = "Listo";
+          }
+          await refresh();
+        } catch (e) {
+          console.error(e);
+          if (engineMsg) engineMsg.textContent = "Error.";
+          if (parsingMsg) parsingMsg.textContent = "Error.";
+        }
+      });
+    });
+
+    refreshBtns.forEach((b) => b.addEventListener("click", () => refresh()));
+
+    document.addEventListener("click", async (ev) => {
+      const t = ev.target;
+      if (!(t instanceof HTMLElement)) return;
+
+      const requeueId = t.getAttribute("data-requeue-upload");
+      if (requeueId) {
+        try {
+          await apiAction("parsing_requeue_uploads", { ids: [Number(requeueId)], delete_events: false });
+          await refresh();
+        } catch (e) { console.error(e); }
+        return;
+      }
+
+      const reprocessId = t.getAttribute("data-reprocess-upload");
+      if (reprocessId) {
+        try {
+          await apiAction("parsing_requeue_uploads", { ids: [Number(reprocessId)], delete_events: true });
+          await refresh();
+        } catch (e) { console.error(e); }
+        return;
+      }
+
+      const requeueEngineUpload = t.getAttribute("data-requeue-engine-upload");
+      if (requeueEngineUpload) {
+        try {
+          await apiAction("engine_requeue_upload", { upload_id: Number(requeueEngineUpload), only_errors: false });
+          await refresh();
+        } catch (e) { console.error(e); }
+      }
+    });
+
+    // Carga única al entrar (sin auto-refresh)
+    refresh();
+  </script>
+</DashboardLayout>
+

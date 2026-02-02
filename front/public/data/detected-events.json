@@ -1,0 +1,222 @@
+[
+  {
+    "id": "ev1",
+    "severityLabel": "Alta",
+    "level": "high",
+    "type": "Brute-force",
+    "ip": "189.220.32.10",
+    "description": "57 intentos fallidos en 2 minutos",
+    "server": "svgs147",
+    "datetime": "2025-11-24 10:22",
+    "status": "open"
+  },
+  {
+    "id": "ev2",
+    "severityLabel": "Alta",
+    "level": "high",
+    "type": "SQLi",
+    "ip": "168.90.45.120",
+    "description": "Payload \" OR 1=1-- detectado",
+    "server": "svgs289",
+    "datetime": "2025-11-24 09:58",
+    "status": "open"
+  },
+  {
+    "id": "ev3",
+    "severityLabel": "Media",
+    "level": "medium",
+    "type": "Portscan",
+    "ip": "77.91.121.48",
+    "description": "23 puertos analizados en <10s",
+    "server": "svgt272",
+    "datetime": "2025-11-23 23:01",
+    "status": "resolved"
+  },
+  {
+    "id": "ev4",
+    "severityLabel": "Baja",
+    "level": "low",
+    "type": "XML-RPC",
+    "ip": "181.57.33.50",
+    "description": "350 peticiones al endpoint xmlrpc.php",
+    "server": "svgs147",
+    "datetime": "2025-11-23 22:41",
+    "status": "open"
+  },
+  {
+    "id": "ev5",
+    "severityLabel": "Media",
+    "level": "medium",
+    "type": "HTTP Error",
+    "ip": "201.174.88.44",
+    "description": "17 respuestas HTTP 500 consecutivas",
+    "server": "svgr263",
+    "datetime": "2025-11-23 12:54",
+    "status": "open"
+  },
+  {
+    "id": "ev6",
+    "severityLabel": "Alta",
+    "level": "high",
+    "type": "Firewall",
+    "ip": "185.11.22.99",
+    "description": "Múltiples bloqueos por CSF",
+    "server": "svgt272",
+    "datetime": "2025-11-22 18:12",
+    "status": "resolved"
+  },
+  {
+    "id": "ev7",
+    "severityLabel": "Baja",
+    "level": "low",
+    "type": "Email service",
+    "ip": "local",
+    "description": "230 advertencias 'auth failed'",
+    "server": "svdm050",
+    "datetime": "2025-11-21 20:55",
+    "status": "open"
+  },
+  {
+    "id": "ev8",
+    "severityLabel": "Media",
+    "level": "medium",
+    "type": "DoS",
+    "ip": "203.0.113.45",
+    "description": "800 requests en 60s al mismo endpoint",
+    "server": "svgs289",
+    "datetime": "2025-11-21 19:30",
+    "status": "open"
+  },
+  {
+    "id": "ev9",
+    "severityLabel": "Alta",
+    "level": "high",
+    "type": "SSH Brute-force",
+    "ip": "45.133.72.10",
+    "description": "Intentos de acceso SSH detectados (18 intentos)",
+    "server": "svgs147",
+    "datetime": "2025-11-20 17:44",
+    "status": "false_positive"
+  },
+  {
+    "id": "ev10",
+    "severityLabel": "Media",
+    "level": "medium",
+    "type": "RFI Attempt",
+    "ip": "102.56.34.90",
+    "description": "Intento de Remote File Inclusion en /index.php",
+    "server": "svgt272",
+    "datetime": "2025-11-20 15:22",
+    "status": "open"
+  },
+  {
+    "id": "ev11",
+    "severityLabel": "Alta",
+    "level": "high",
+    "type": "WAF Block",
+    "ip": "203.0.113.45",
+    "description": "Regla OWASP-932130 SQL Injection detectada",
+    "server": "svgs289",
+    "datetime": "2025-11-19 22:19",
+    "status": "open"
+  },
+  {
+    "id": "ev12",
+    "severityLabel": "Baja",
+    "level": "low",
+    "type": "Bot Traffic",
+    "ip": "66.249.66.1",
+    "description": "Googlebot crawleo intensivo",
+    "server": "svgr263",
+    "datetime": "2025-11-19 17:02",
+    "status": "resolved"
+  },
+  {
+    "id": "ev13",
+    "severityLabel": "Media",
+    "level": "medium",
+    "type": "SYN Flood",
+    "ip": "178.90.12.230",
+    "description": "400 SYN packets en 40s",
+    "server": "svgs147",
+    "datetime": "2025-11-18 13:51",
+    "status": "open"
+  },
+  {
+    "id": "ev14",
+    "severityLabel": "Alta",
+    "level": "high",
+    "type": "Path Traversal",
+    "ip": "188.72.10.5",
+    "description": "Intento de acceso ../../etc/passwd",
+    "server": "svgt272",
+    "datetime": "2025-11-17 09:22",
+    "status": "open"
+  },
+  {
+    "id": "ev15",
+    "severityLabel": "Media",
+    "level": "medium",
+    "type": "XSS Attempt",
+    "ip": "89.120.33.22",
+    "description": "Script inyectado en parámetro GET",
+    "server": "svdm050",
+    "datetime": "2025-11-17 08:10",
+    "status": "false_positive"
+  },
+  {
+    "id": "ev16",
+    "severityLabel": "Alta",
+    "level": "high",
+    "type": "Malware Upload",
+    "ip": "203.55.22.199",
+    "description": "Archivo sospechoso detectado en /uploads",
+    "server": "svgs289",
+    "datetime": "2025-11-16 11:49",
+    "status": "open"
+  },
+  {
+    "id": "ev17",
+    "severityLabel": "Baja",
+    "level": "low",
+    "type": "Spam Auth Failures",
+    "ip": "local",
+    "description": "150 intentos fallidos de envío SMTP",
+    "server": "svdm050",
+    "datetime": "2025-11-15 21:30",
+    "status": "resolved"
+  },
+  {
+    "id": "ev18",
+    "severityLabel": "Media",
+    "level": "medium",
+    "type": "API Abuse",
+    "ip": "203.0.113.200",
+    "description": "Consumo anormal de /api/login",
+    "server": "svgs147",
+    "datetime": "2025-11-15 18:05",
+    "status": "open"
+  },
+  {
+    "id": "ev19",
+    "severityLabel": "Alta",
+    "level": "high",
+    "type": "WAF Block",
+    "ip": "189.221.99.41",
+    "description": "Regla 942100 SQLi - Anomaly Score 7",
+    "server": "svgs289",
+    "datetime": "2025-11-15 10:11",
+    "status": "resolved"
+  },
+  {
+    "id": "ev20",
+    "severityLabel": "Media",
+    "level": "medium",
+    "type": "Reconnaissance",
+    "ip": "91.187.22.10",
+    "description": "Intento de enumeración de admin panel",
+    "server": "svgt272",
+    "datetime": "2025-11-14 23:33",
+    "status": "open"
+  }
+]

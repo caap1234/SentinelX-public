@@ -1,0 +1,1394 @@
+---
+import DashboardLayout from "../../layouts/DashboardLayout.astro";
+import HeaderBar from "../../components/dashboard/HeaderBar.astro";
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000";
+---
+
+<DashboardLayout pageTitle="SentinelX SIEM – Configuración">
+  <HeaderBar
+    title="Configuración"
+    subtitle="Ajusta preferencias del sistema, usuarios y parámetros de seguridad."
+    showFilters={false}
+  />
+
+  <section class="flex-1 px-8 py-6 space-y-6">
+
+    <!-- ✅ Aviso no-admin (se muestra solo si no es admin) -->
+    <div id="notAdminNotice" class="hidden rounded-xl bg-white border border-[#E5E7EB] shadow-sm overflow-hidden">
+      <div class="px-8 py-5">
+        <p class="text-sm font-semibold text-[#111827]">Acceso limitado</p>
+        <p class="text-xs text-[#6B7280] mt-1">
+          Estás viendo tu configuración personal. La administración de usuarios y contraseñas está disponible solo para administradores.
+        </p>
+      </div>
+    </div>
+
+    <!-- USUARIOS Y ROLES (solo admin) -->
+    <div id="adminUsersSection" class="rounded-xl bg-white border border-[#E5E7EB] shadow-sm overflow-hidden hidden">
+      <div class="px-8 py-4 border-b border-[#E5E7EB]">
+        <h2 class="text-sm font-semibold text-center text-[#111827]">
+          Usuarios y roles
+        </h2>
+      </div>
+
+      <div class="px-8 py-5">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-xs text-[#6B7280] max-w-xl">
+              Administra usuarios: cambia rol (Admin/Analista), deshabilita, elimina y cambia contraseña.
+            </p>
+          </div>
+          <div class="text-[12px] text-[#6B7280] mt-1" id="usersStatus"></div>
+        </div>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full text-left text-[12px]">
+            <thead>
+              <tr class="border-b border-[#E5E7EB] text-[#6B7280]">
+                <th class="py-3 pr-4">Email</th>
+                <th class="py-3 pr-4">Nombre</th>
+                <th class="py-3 pr-4">Rol</th>
+                <th class="py-3 pr-4">Estado</th>
+                <th class="py-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="usersTbody">
+              <tr><td colspan="5" class="py-4 text-[#9CA3AF]">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ✅ NUEVO: Crear usuario (solo admin) -->
+    <div id="adminCreateUserSection" class="rounded-xl bg-white border border-[#E5E7EB] shadow-sm overflow-hidden hidden">
+      <div class="px-8 py-4 border-b border-[#E5E7EB]">
+        <h2 class="text-sm font-semibold text-center text-[#111827]">
+          Crear usuario
+        </h2>
+      </div>
+
+      <div class="px-8 py-6">
+        <p class="text-xs text-[#6B7280] max-w-2xl">
+          Crea usuarios nuevos desde el panel (solo administradores).
+        </p>
+
+        <form id="createUserForm" class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div class="md:col-span-2">
+            <label class="block text-[12px] text-[#111827] font-medium">Email</label>
+            <input
+              type="email"
+              id="newUserEmail"
+              required
+              autocomplete="email"
+              placeholder="usuario@empresa.com"
+              class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm text-[#111827]
+                    placeholder:text-[#9CA3AF]
+                    focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+            />
+          </div>
+
+          <div class="md:col-span-1">
+            <label class="block text-[12px] text-[#111827] font-medium">Nombre</label>
+            <input
+              type="text"
+              id="newUserName"
+              placeholder="Nombre Apellido"
+              class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm text-[#111827]
+                    placeholder:text-[#9CA3AF]
+                    focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+            />
+          </div>
+
+          <div class="md:col-span-1">
+            <label class="block text-[12px] text-[#111827] font-medium">Rol</label>
+            <select
+              id="newUserRole"
+              class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm text-[#111827]
+                     focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+            >
+              <option value="analyst" selected>Analista</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-[12px] text-[#111827] font-medium">Contraseña</label>
+            <input
+              type="password"
+              id="newUserPassword"
+              required
+              minlength="6"
+              placeholder="Mínimo 6 caracteres"
+              class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm text-[#111827]
+                    placeholder:text-[#9CA3AF]
+                    focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+            />
+          </div>
+
+          <div class="md:col-span-2 flex items-end gap-2">
+            <button
+              type="submit"
+              id="createUserBtn"
+              class="h-10 px-6 rounded-lg bg-[#F97316] text-white text-[12px] font-semibold
+                    hover:bg-[#EA580C] transition-colors"
+            >
+              Crear usuario
+            </button>
+            <span id="createUserStatus" class="text-[12px] text-[#6B7280]"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ✅ NUEVO: REGLAS (accesos) (lo dejo como admin-only por ser “admin panel”) -->
+    <div id="adminRulesSection" class="rounded-xl bg-white border border-[#E5E7EB] shadow-sm overflow-hidden hidden">
+      <div class="px-8 py-4 border-b border-[#E5E7EB]">
+        <h2 class="text-sm font-semibold text-center text-[#111827]">
+          Reglas
+        </h2>
+      </div>
+
+      <div class="px-8 py-6">
+        <p class="text-xs text-[#6B7280] max-w-2xl">
+          Accesos rápidos para administrar reglas de correlación y reglas de incidentes.
+        </p>
+
+        <div class="mt-4 flex flex-col md:flex-row gap-3 justify-center">
+          <a
+            href="/dashboard/reglas"
+            class="h-10 px-6 inline-flex items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[12px] font-semibold text-[#111827]
+                   hover:bg-[#F9FAFB] transition-colors"
+          >
+            Editar reglas (Eventos)
+          </a>
+
+          <a
+            href="/dashboard/reglas-incidentes"
+            class="h-10 px-6 inline-flex items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[12px] font-semibold text-[#111827]
+                   hover:bg-[#F9FAFB] transition-colors"
+          >
+            Editar reglas de incidentes
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- PREFERENCIAS (user_settings) -->
+    <div class="rounded-xl bg-white border border-[#E5E7EB] shadow-sm overflow-hidden">
+      <div class="px-8 py-4 border-b border-[#E5E7EB]">
+        <h2 class="text-sm font-semibold text-center text-[#111827]">
+          Preferencias del panel
+        </h2>
+      </div>
+
+      <div class="px-8 py-6 space-y-5">
+        <p class="text-xs text-[#6B7280] max-w-2xl">
+          Estas preferencias se guardan por usuario (user_settings) y aplican solo a tu sesión.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Auto refresh -->
+          <div class="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+            <p class="text-sm font-medium text-[#111827]">Auto actualización</p>
+            <p class="text-xs text-[#6B7280] mt-1">Actualiza dashboards automáticamente.</p>
+
+            <div class="mt-3 flex items-center justify-between gap-3">
+              <select
+                id="prefAutoRefresh"
+                class="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              >
+                <option value="0">Desactivado</option>
+                <option value="10">Cada 10s</option>
+                <option value="30">Cada 30s</option>
+                <option value="60">Cada 60s</option>
+                <option value="120">Cada 2min</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Default time range -->
+          <div class="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+            <p class="text-sm font-medium text-[#111827]">Rango por defecto</p>
+            <p class="text-xs text-[#6B7280] mt-1">Se aplica al entrar a Eventos/Incidents.</p>
+
+            <div class="mt-3">
+              <select
+                id="prefDefaultRange"
+                class="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              >
+                <option value="1h">Última hora</option>
+                <option value="6h">Últimas 6 horas</option>
+                <option value="24h">Últimas 24 horas</option>
+                <option value="7d">Últimos 7 días</option>
+                <option value="30d">Últimos 30 días</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Compact mode -->
+          <div class="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+            <p class="text-sm font-medium text-[#111827]">Modo compacto</p>
+            <p class="text-xs text-[#6B7280] mt-1">Reduce espacios en tablas.</p>
+
+            <div class="mt-3 flex items-center justify-between gap-6">
+              <button
+                type="button"
+                data-toggle="pref-compact"
+                class="relative inline-flex h-7 w-12 items-center rounded-full bg-[#D1D5DB] transition-colors shrink-0"
+                aria-pressed="false"
+              >
+                <span class="sr-only">Modo compacto</span>
+                <span
+                  data-toggle-knob
+                  class="inline-block h-5 w-5 transform rounded-full bg-white shadow translate-x-1 transition-transform"
+                ></span>
+              </button>
+
+              <span class="text-[12px] text-[#6B7280]" id="prefCompactLabel">Desactivado</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col items-center gap-2 pt-2">
+          <button
+            type="button"
+            id="savePrefsBtn"
+            class="h-10 px-6 rounded-lg bg-[#F97316] text-white text-[12px] font-semibold
+                  hover:bg-[#EA580C] transition-colors"
+          >
+            Guardar preferencias
+          </button>
+          <span id="prefsSaveStatus" class="text-[12px] text-[#6B7280]"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALERTAS Y NOTIFICACIONES -->
+    <div class="rounded-xl bg-white border border-[#E5E7EB] shadow-sm overflow-hidden">
+      <div class="px-8 py-4 border-b border-[#E5E7EB]">
+        <h2 class="text-sm font-semibold text-center text-[#111827]">
+          Alertas y notificaciones
+        </h2>
+      </div>
+
+      <div class="divide-y divide-[#F3F4F6]">
+        <!-- Alta -->
+        <div class="px-8 py-4 flex items-center justify-between gap-6">
+          <div class="flex flex-col gap-1">
+            <p class="text-sm font-medium text-[#111827]">
+              Alertas de severidad Alta por correo
+            </p>
+            <p class="text-xs text-[#6B7280]">
+              Se enviarán notificaciones cuando se detecten eventos críticos/altos.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            data-toggle="alert-high"
+            class="relative inline-flex h-7 w-12 items-center rounded-full bg-[#F97316] transition-colors shrink-0"
+            aria-pressed="true"
+          >
+            <span class="sr-only">Alertas de severidad Alta por correo</span>
+            <span
+              data-toggle-knob
+              class="inline-block h-5 w-5 transform rounded-full bg-white shadow translate-x-6 transition-transform"
+            ></span>
+          </button>
+        </div>
+
+        <!-- Media -->
+        <div class="px-8 py-4 flex items-center justify-between gap-6">
+          <div class="flex flex-col gap-1">
+            <p class="text-sm font-medium text-[#111827]">
+              Alertas de severidad Media por correo
+            </p>
+            <p class="text-xs text-[#6B7280]">
+              Se enviarán notificaciones para eventos relevantes.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            data-toggle="alert-medium"
+            class="relative inline-flex h-7 w-12 items-center rounded-full bg-[#F97316] transition-colors shrink-0"
+            aria-pressed="true"
+          >
+            <span class="sr-only">Alertas de severidad Media por correo</span>
+            <span
+              data-toggle-knob
+              class="inline-block h-5 w-5 transform rounded-full bg-white shadow translate-x-6 transition-transform"
+            ></span>
+          </button>
+        </div>
+
+        <!-- Baja -->
+        <div class="px-8 py-4 flex items-center justify-between gap-6">
+          <div class="flex flex-col gap-1">
+            <p class="text-sm font-medium text-[#111827]">
+              Alertas de severidad Baja por correo
+            </p>
+            <p class="text-xs text-[#6B7280]">
+              Notifica sobre eventos informativos o de bajo impacto.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            data-toggle="alert-low"
+            class="relative inline-flex h-7 w-12 items-center rounded-full bg-[#F97316] transition-colors shrink-0"
+            aria-pressed="true"
+          >
+            <span class="sr-only">Alertas de severidad Baja por correo</span>
+            <span
+              data-toggle-knob
+              class="inline-block h-5 w-5 transform rounded-full bg-white shadow translate-x-6 transition-transform"
+            ></span>
+          </button>
+        </div>
+
+        <!-- Correo de destino -->
+        <div class="px-8 py-5 bg-[#F9FAFB] flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div class="w-full md:max-w-xs">
+            <p class="text-sm font-medium text-[#111827]">
+              Correo de destino:
+            </p>
+          </div>
+
+          <div class="w-full md:max-w-md">
+            <input
+              type="email"
+              placeholder="ejemplo@ejemplo.com"
+              data-email-input
+              class="w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-sm text-[#111827]
+                    placeholder:text-[#9CA3AF]
+                    focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+            />
+            <p class="mt-1 text-[11px] text-[#9CA3AF]" data-email-help>
+              Dirección a la que se enviarán los correos de alerta.
+            </p>
+          </div>
+        </div>
+
+        <div class="px-8 py-6 flex flex-col items-center gap-2">
+          <button
+            type="button"
+            id="saveAlertSettingsBtn"
+            class="h-10 px-6 rounded-lg bg-[#F97316] text-white text-[12px] font-semibold
+                  hover:bg-[#EA580C] transition-colors"
+          >
+            Guardar configuración
+          </button>
+
+          <span id="alertSaveStatus" class="text-[12px] text-[#6B7280]"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPORTACIÓN Y LIMPIEZA -->
+    <div class="rounded-xl bg-white border border-[#E5E7EB] shadow-sm overflow-hidden">
+      <div class="px-8 py-4 border-b border-[#E5E7EB]">
+        <h2 class="text-sm font-semibold text-center text-[#111827]">
+          Exportación y limpieza
+        </h2>
+      </div>
+
+      <div class="px-8 py-8 flex flex-col items-center gap-4">
+        <button
+          type="button"
+          id="exportCsvBtn"
+          class="w-full max-w-xs h-16 rounded-xl bg-[#E5E7EB] text-sm font-medium text-[#4B5563]
+                 flex items-center justify-center text-center px-4"
+        >
+          Exportar (ZIP con CSV)
+          <br />
+          Selecciona qué exportar
+        </button>
+
+        <button
+          type="button"
+          id="cleanUploadedLogsBtn"
+          class="w-full max-w-xs h-16 rounded-xl bg-[#FEE2E2] text-sm font-medium text-[#B91C1C]
+                 flex items-center justify-center text-center px-4"
+        >
+          Limpiar archivos
+          <br />
+          /uploaded_logs
+        </button>
+
+        <button
+          type="button"
+          id="backupAndWipeDbBtn"
+          class="w-full max-w-xs h-16 rounded-xl bg-[#FEE2E2] text-sm font-medium text-[#B91C1C]
+                 flex items-center justify-center text-center px-4"
+        >
+          Respaldar y limpiar BD
+          <br />
+          (todo, excepto usuarios y API keys)
+        </button>
+
+        <p class="mt-2 text-[11px] text-center text-[#9CA3AF] max-w-md">
+          Esta acción genera un respaldo ZIP en el servidor y luego borra todos los datos de la BD
+          excepto users y api_keys.
+        </p>
+
+        <span id="maintenanceStatus" class="text-[12px] text-[#6B7280]"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ✅ MODAL EXPORT -->
+  <div
+    id="exportModal"
+    class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4 z-50"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="exportModalTitle"
+  >
+    <div class="w-full max-w-xl rounded-2xl bg-white shadow-xl border border-[#E5E7EB] overflow-hidden">
+      <div class="px-6 py-4 border-b border-[#E5E7EB] flex items-center justify-between">
+        <h3 id="exportModalTitle" class="text-sm font-semibold text-[#111827]">Exportar datos</h3>
+        <button id="exportModalClose" type="button" class="h-9 w-9 rounded-lg border border-[#E5E7EB] hover:bg-[#F9FAFB]">
+          ✕
+        </button>
+      </div>
+
+      <div class="px-6 py-5 space-y-4">
+        <p class="text-xs text-[#6B7280]">
+          Genera un ZIP con CSV. Puedes elegir qué incluir y el rango de días.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[12px] text-[#111827] font-medium">Días</label>
+            <select
+              id="exportDays"
+              class="mt-1 h-10 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm text-[#111827]
+                     focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+            >
+              <option value="1">1 día</option>
+              <option value="7">7 días</option>
+              <option value="30">30 días</option>
+              <option value="180">180 días</option>
+              <option value="365">365 días</option>
+              <option value="3650" selected>Todo (3650 días)</option>
+            </select>
+          </div>
+
+          <div class="flex items-end gap-2">
+            <button id="exportPresetAll" type="button" class="h-10 px-4 rounded-lg border border-[#E5E7EB] bg-white text-[12px] font-semibold hover:bg-[#F9FAFB]">
+              Todo
+            </button>
+            <button id="exportPresetIncidents" type="button" class="h-10 px-4 rounded-lg border border-[#E5E7EB] bg-white text-[12px] font-semibold hover:bg-[#F9FAFB]">
+              Solo incidentes
+            </button>
+            <button id="exportPresetEvents" type="button" class="h-10 px-4 rounded-lg border border-[#E5E7EB] bg-white text-[12px] font-semibold hover:bg-[#F9FAFB]">
+              Solo eventos
+            </button>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+          <p class="text-[12px] font-semibold text-[#111827]">Incluir</p>
+          <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-[12px] text-[#111827]">
+            <label class="flex items-center gap-2">
+              <input type="checkbox" data-export-include value="events" checked />
+              <span>Eventos</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" data-export-include value="alerts" checked />
+              <span>Alertas</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" data-export-include value="incidents" checked />
+              <span>Incidentes</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" data-export-include value="entities" checked />
+              <span>Entities</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" data-export-include value="rules_v2" />
+              <span>Reglas (rules_v2)</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" data-export-include value="incident_rules" />
+              <span>Reglas de incidentes</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" data-export-include value="api_keys" />
+              <span>API Keys</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" data-export-include value="users" />
+              <span>Usuarios</span>
+            </label>
+          </div>
+          <p class="mt-2 text-[11px] text-[#9CA3AF]">
+            Nota: users y api_keys son opcionales por seguridad.
+          </p>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 pt-2">
+          <span id="exportModalStatus" class="text-[12px] text-[#6B7280]"></span>
+          <div class="flex gap-2">
+            <button
+              id="exportModalCancel"
+              type="button"
+              class="h-10 px-5 rounded-lg border border-[#E5E7EB] bg-white text-[12px] font-semibold hover:bg-[#F9FAFB]"
+            >
+              Cancelar
+            </button>
+            <button
+              id="exportModalConfirm"
+              type="button"
+              class="h-10 px-5 rounded-lg bg-[#F97316] text-white text-[12px] font-semibold hover:bg-[#EA580C]"
+            >
+              Exportar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ MODAL: Cambiar contraseña (solo admin) -->
+  <div
+    id="pwdModal"
+    class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4 z-50"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="pwdModalTitle"
+  >
+    <div class="w-full max-w-lg rounded-2xl bg-white shadow-xl border border-[#E5E7EB] overflow-hidden">
+      <div class="px-6 py-4 border-b border-[#E5E7EB] flex items-center justify-between">
+        <h3 id="pwdModalTitle" class="text-sm font-semibold text-[#111827]">Cambiar contraseña</h3>
+        <button id="pwdModalClose" type="button" class="h-9 w-9 rounded-lg border border-[#E5E7EB] hover:bg-[#F9FAFB]">
+          ✕
+        </button>
+      </div>
+
+      <div class="px-6 py-5 space-y-4">
+        <p class="text-xs text-[#6B7280]">
+          Usuario: <span id="pwdModalUserLabel" class="text-[#111827] font-semibold"></span>
+        </p>
+
+        <div>
+          <label class="text-[12px] text-[#111827] font-medium">Nueva contraseña</label>
+          <input
+            id="pwdModalInput"
+            type="password"
+            minlength="6"
+            placeholder="Mínimo 6 caracteres"
+            class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm text-[#111827]
+                  placeholder:text-[#9CA3AF]
+                  focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+          />
+        </div>
+
+        <div class="flex items-center justify-between gap-3 pt-2">
+          <span id="pwdModalStatus" class="text-[12px] text-[#6B7280]"></span>
+          <div class="flex gap-2">
+            <button
+              id="pwdModalCancel"
+              type="button"
+              class="h-10 px-5 rounded-lg border border-[#E5E7EB] bg-white text-[12px] font-semibold hover:bg-[#F9FAFB]"
+            >
+              Cancelar
+            </button>
+            <button
+              id="pwdModalConfirm"
+              type="button"
+              class="h-10 px-5 rounded-lg bg-[#F97316] text-white text-[12px] font-semibold hover:bg-[#EA580C]"
+            >
+              Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" define:vars={{ API_BASE }}>
+    const token =
+      localStorage.getItem("sentinelx_token") ||
+      sessionStorage.getItem("sentinelx_token");
+
+    if (!token) window.location.href = "/login";
+
+    const authHeaders = () => ({
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    });
+
+    const handleAuthErrors = async (res) => {
+      if (res.status === 401) {
+        localStorage.removeItem("sentinelx_token");
+        sessionStorage.removeItem("sentinelx_token");
+        window.location.href = "/login";
+        return true;
+      }
+      return false;
+    };
+
+    // -------------------------
+    // Admin gate
+    // -------------------------
+    let IS_ADMIN = false;
+
+    const notAdminNotice = document.getElementById("notAdminNotice");
+    const adminUsersSection = document.getElementById("adminUsersSection");
+    const adminCreateUserSection = document.getElementById("adminCreateUserSection");
+    const adminRulesSection = document.getElementById("adminRulesSection");
+
+    async function loadMe() {
+      try {
+        const res = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() });
+        if (await handleAuthErrors(res)) return;
+        if (!res.ok) throw new Error(await res.text());
+        const me = await res.json();
+        IS_ADMIN = !!me?.is_admin;
+
+        if (IS_ADMIN) {
+          adminUsersSection?.classList.remove("hidden");
+          adminCreateUserSection?.classList.remove("hidden");
+          adminRulesSection?.classList.remove("hidden");
+          notAdminNotice?.classList.add("hidden");
+        } else {
+          adminUsersSection?.classList.add("hidden");
+          adminCreateUserSection?.classList.add("hidden");
+          adminRulesSection?.classList.add("hidden");
+          notAdminNotice?.classList.remove("hidden");
+        }
+      } catch (e) {
+        console.error("loadMe:", e);
+        // Si falla /me por cualquier razón, asumimos no-admin para no exponer UI admin
+        IS_ADMIN = false;
+        adminUsersSection?.classList.add("hidden");
+        adminCreateUserSection?.classList.add("hidden");
+        adminRulesSection?.classList.add("hidden");
+        notAdminNotice?.classList.remove("hidden");
+      }
+    }
+
+    // -------------------------
+    // Toggles (mismo look)
+    // -------------------------
+    const setupToggle = (id, initialOn = true) => {
+      const btn = document.querySelector(`[data-toggle="${id}"]`);
+      if (!btn) return null;
+
+      const knob = btn.querySelector("[data-toggle-knob]");
+      if (!knob) return null;
+
+      const setState = (on) => {
+        if (on) {
+          btn.classList.remove("bg-[#D1D5DB]");
+          btn.classList.add("bg-[#F97316]");
+          knob.classList.remove("translate-x-1");
+          knob.classList.add("translate-x-6");
+          btn.setAttribute("aria-pressed", "true");
+        } else {
+          btn.classList.remove("bg-[#F97316]");
+          btn.classList.add("bg-[#D1D5DB]");
+          knob.classList.remove("translate-x-6");
+          knob.classList.add("translate-x-1");
+          btn.setAttribute("aria-pressed", "false");
+        }
+      };
+
+      setState(initialOn);
+
+      btn.addEventListener("click", () => {
+        const isOn = btn.getAttribute("aria-pressed") === "true";
+        setState(!isOn);
+      });
+
+      return { btn, setState, getState: () => btn.getAttribute("aria-pressed") === "true" };
+    };
+
+    // -------------------------
+    // user_settings helpers
+    // -------------------------
+    let SETTINGS_CACHE = {}; // key -> value (string)
+
+    const normalizeSettingsPayload = (data) => {
+      if (!data) return {};
+      if (Array.isArray(data.items)) {
+        const out = {};
+        for (const it of data.items) out[String(it.key)] = String(it.value ?? "");
+        return out;
+      }
+      if (data.settings && typeof data.settings === "object") {
+        const out = {};
+        for (const [k, v] of Object.entries(data.settings)) out[String(k)] = String(v ?? "");
+        return out;
+      }
+      if (typeof data === "object") {
+        const out = {};
+        for (const [k, v] of Object.entries(data)) out[String(k)] = String(v ?? "");
+        return out;
+      }
+      return {};
+    };
+
+    async function loadUserSettings() {
+      try {
+        const res = await fetch(`${API_BASE}/settings`, { headers: authHeaders() });
+        if (await handleAuthErrors(res)) return;
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        SETTINGS_CACHE = normalizeSettingsPayload(data);
+      } catch (e) {
+        console.error("loadUserSettings:", e);
+        SETTINGS_CACHE = {};
+      }
+    }
+
+    const getSetting = (key, fallback = "") => {
+      const v = SETTINGS_CACHE[key];
+      if (typeof v === "string") return v;
+      return fallback;
+    };
+
+    async function saveSettingsBulk(obj) {
+      const a = await fetch(`${API_BASE}/settings`, {
+        method: "PUT",
+        headers: authHeaders(),
+        body: JSON.stringify({ settings: obj }),
+      });
+
+      if (!(await handleAuthErrors(a)) && a.ok) return true;
+
+      const items = Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v ?? "") }));
+      const b = await fetch(`${API_BASE}/settings`, {
+        method: "PUT",
+        headers: authHeaders(),
+        body: JSON.stringify({ items }),
+      });
+
+      if (await handleAuthErrors(b)) return false;
+      if (!b.ok) throw new Error(await b.text());
+      return true;
+    }
+
+    // -------------------------
+    // Preferencias UI
+    // -------------------------
+    const prefAutoRefresh = document.getElementById("prefAutoRefresh");
+    const prefDefaultRange = document.getElementById("prefDefaultRange");
+    const prefCompactLabel = document.getElementById("prefCompactLabel");
+    const savePrefsBtn = document.getElementById("savePrefsBtn");
+    const prefsSaveStatus = document.getElementById("prefsSaveStatus");
+
+    const tCompact = setupToggle("pref-compact", false);
+
+    const setCompactLabel = (on) => {
+      if (!prefCompactLabel) return;
+      prefCompactLabel.textContent = on ? "Activado" : "Desactivado";
+    };
+
+    tCompact?.btn?.addEventListener("click", () => {
+      setCompactLabel(tCompact.getState());
+    });
+
+    async function loadPrefs() {
+      await loadUserSettings();
+
+      const autoRefresh = getSetting("ui.auto_refresh_seconds", "30");
+      const defaultRange = getSetting("ui.default_range", "24h");
+      const compact = getSetting("ui.compact_mode", "0");
+
+      if (prefAutoRefresh instanceof HTMLSelectElement) {
+        prefAutoRefresh.value = ["0","10","30","60","120"].includes(autoRefresh) ? autoRefresh : "30";
+      }
+      if (prefDefaultRange instanceof HTMLSelectElement) {
+        prefDefaultRange.value = ["1h","6h","24h","7d","30d"].includes(defaultRange) ? defaultRange : "24h";
+      }
+
+      const compactOn = compact === "1" || compact === "true";
+      tCompact?.setState(compactOn);
+      setCompactLabel(compactOn);
+    }
+
+    savePrefsBtn?.addEventListener("click", async () => {
+      try {
+        if (prefsSaveStatus) prefsSaveStatus.textContent = "Guardando…";
+        savePrefsBtn?.setAttribute("disabled", "true");
+        savePrefsBtn?.classList.add("opacity-70");
+
+        const autoRefreshVal =
+          prefAutoRefresh instanceof HTMLSelectElement ? prefAutoRefresh.value : "30";
+        const rangeVal =
+          prefDefaultRange instanceof HTMLSelectElement ? prefDefaultRange.value : "24h";
+        const compactVal = (tCompact?.getState() ? "1" : "0");
+
+        await saveSettingsBulk({
+          "ui.auto_refresh_seconds": autoRefreshVal,
+          "ui.default_range": rangeVal,
+          "ui.compact_mode": compactVal,
+        });
+
+        await loadUserSettings();
+        if (prefsSaveStatus) prefsSaveStatus.textContent = "Guardado.";
+      } catch (e) {
+        console.error(e);
+        if (prefsSaveStatus) prefsSaveStatus.textContent = "Error.";
+        alert("No se pudieron guardar tus preferencias.");
+      } finally {
+        savePrefsBtn?.removeAttribute("disabled");
+        savePrefsBtn?.classList.remove("opacity-70");
+      }
+    });
+
+    // -------------------------
+    // Alertas (endpoint dedicado)
+    // -------------------------
+    const tHigh = setupToggle("alert-high", true);
+    const tMed = setupToggle("alert-medium", true);
+    const tLow = setupToggle("alert-low", true);
+
+    const emailInput = document.querySelector("[data-email-input]");
+    const emailHelp = document.querySelector("[data-email-help]");
+    const saveBtn = document.getElementById("saveAlertSettingsBtn");
+    const alertSaveStatus = document.getElementById("alertSaveStatus");
+
+    const updateEmailHelp = () => {
+      const hasValue = (emailInput?.value || "").trim().length > 0;
+      emailHelp?.classList.toggle("hidden", hasValue);
+    };
+    emailInput?.addEventListener("input", updateEmailHelp);
+
+    async function loadAlertSettings() {
+      try {
+        const res = await fetch(`${API_BASE}/settings/alert-email`, { headers: authHeaders() });
+        if (await handleAuthErrors(res)) return;
+
+        if (res.ok) {
+          const data = await res.json();
+          tHigh?.setState(!!data.high);
+          tMed?.setState(!!data.medium);
+          tLow?.setState(!!data.low);
+          if (emailInput) emailInput.value = data.to_email || "";
+          updateEmailHelp();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    saveBtn?.addEventListener("click", async () => {
+      try {
+        if (alertSaveStatus) alertSaveStatus.textContent = "Guardando…";
+        saveBtn?.setAttribute("disabled", "true");
+        saveBtn?.classList.add("opacity-70");
+
+        const payload = {
+          high: tHigh?.getState() ?? true,
+          medium: tMed?.getState() ?? true,
+          low: tLow?.getState() ?? true,
+          to_email: (emailInput?.value || "").trim() || null,
+        };
+
+        const res = await fetch(`${API_BASE}/settings/alert-email`, {
+          method: "PUT",
+          headers: authHeaders(),
+          body: JSON.stringify(payload),
+        });
+
+        if (await handleAuthErrors(res)) return;
+        if (!res.ok) throw new Error(await res.text());
+
+        if (alertSaveStatus) alertSaveStatus.textContent = "Guardado.";
+      } catch (e) {
+        console.error(e);
+        if (alertSaveStatus) alertSaveStatus.textContent = "Error.";
+        alert("No se pudo guardar la configuración de alertas.");
+      } finally {
+        saveBtn?.removeAttribute("disabled");
+        saveBtn?.classList.remove("opacity-70");
+      }
+    });
+
+    // -------------------------
+    // Admin: Crear usuario
+    // -------------------------
+    const createUserForm = document.getElementById("createUserForm");
+    const createUserBtn = document.getElementById("createUserBtn");
+    const createUserStatus = document.getElementById("createUserStatus");
+
+    createUserForm?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!IS_ADMIN) return;
+
+      const emailEl = document.getElementById("newUserEmail");
+      const nameEl = document.getElementById("newUserName");
+      const passEl = document.getElementById("newUserPassword");
+      const roleEl = document.getElementById("newUserRole");
+
+      if (!(emailEl instanceof HTMLInputElement)) return;
+      if (!(nameEl instanceof HTMLInputElement)) return;
+      if (!(passEl instanceof HTMLInputElement)) return;
+      if (!(roleEl instanceof HTMLSelectElement)) return;
+
+      const email = emailEl.value.trim();
+      const full_name = nameEl.value.trim() || null;
+      const password = passEl.value;
+      const is_admin = roleEl.value === "admin";
+
+      if (!email || !password || password.length < 6) {
+        alert("Valida el email y contraseña (mínimo 6 caracteres).");
+        return;
+      }
+
+      try {
+        if (createUserStatus) createUserStatus.textContent = "Creando…";
+        createUserBtn?.setAttribute("disabled", "true");
+        createUserBtn?.classList.add("opacity-70");
+
+        const res = await fetch(`${API_BASE}/admin/users`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ email, full_name, password, is_admin }),
+        });
+
+        if (await handleAuthErrors(res)) return;
+
+        if (!res.ok) {
+          let msg = "No se pudo crear el usuario.";
+          try {
+            const data = await res.json();
+            msg = data?.detail || msg;
+          } catch (_) {}
+          throw new Error(msg);
+        }
+
+        // reset form
+        emailEl.value = "";
+        nameEl.value = "";
+        passEl.value = "";
+        roleEl.value = "analyst";
+
+        if (createUserStatus) createUserStatus.textContent = "Usuario creado.";
+        await loadUsers();
+      } catch (err) {
+        console.error(err);
+        if (createUserStatus) createUserStatus.textContent = "Error.";
+        alert(String(err?.message || "No se pudo crear el usuario."));
+      } finally {
+        createUserBtn?.removeAttribute("disabled");
+        createUserBtn?.classList.remove("opacity-70");
+      }
+    });
+
+    // -------------------------
+    // Admin: Modal cambiar contraseña
+    // -------------------------
+    const pwdModal = document.getElementById("pwdModal");
+    const pwdModalClose = document.getElementById("pwdModalClose");
+    const pwdModalCancel = document.getElementById("pwdModalCancel");
+    const pwdModalConfirm = document.getElementById("pwdModalConfirm");
+    const pwdModalStatus = document.getElementById("pwdModalStatus");
+    const pwdModalUserLabel = document.getElementById("pwdModalUserLabel");
+    const pwdModalInput = document.getElementById("pwdModalInput");
+
+    let PWD_TARGET_ID = null;
+    let PWD_TARGET_EMAIL = "";
+
+    const openPwdModal = (userId, userEmail) => {
+      if (!IS_ADMIN) return;
+      PWD_TARGET_ID = userId;
+      PWD_TARGET_EMAIL = userEmail || "";
+
+      if (pwdModalUserLabel) pwdModalUserLabel.textContent = PWD_TARGET_EMAIL || `ID ${userId}`;
+      if (pwdModalStatus) pwdModalStatus.textContent = "";
+      if (pwdModalInput instanceof HTMLInputElement) pwdModalInput.value = "";
+
+      pwdModal?.classList.remove("hidden");
+      pwdModal?.classList.add("flex");
+    };
+
+    const closePwdModal = () => {
+      pwdModal?.classList.add("hidden");
+      pwdModal?.classList.remove("flex");
+      PWD_TARGET_ID = null;
+      PWD_TARGET_EMAIL = "";
+      if (pwdModalStatus) pwdModalStatus.textContent = "";
+      if (pwdModalInput instanceof HTMLInputElement) pwdModalInput.value = "";
+    };
+
+    pwdModalClose?.addEventListener("click", closePwdModal);
+    pwdModalCancel?.addEventListener("click", closePwdModal);
+    pwdModal?.addEventListener("click", (e) => {
+      if (e.target === pwdModal) closePwdModal();
+    });
+
+    pwdModalConfirm?.addEventListener("click", async () => {
+      if (!IS_ADMIN) return;
+      if (!PWD_TARGET_ID) return;
+
+      const newPass = (pwdModalInput instanceof HTMLInputElement ? pwdModalInput.value : "").trim();
+      if (!newPass || newPass.length < 6) {
+        if (pwdModalStatus) pwdModalStatus.textContent = "Contraseña mínima 6 caracteres.";
+        return;
+      }
+
+      try {
+        if (pwdModalStatus) pwdModalStatus.textContent = "Guardando…";
+        pwdModalConfirm?.setAttribute("disabled", "true");
+        pwdModalConfirm?.classList.add("opacity-70");
+
+        const res = await fetch(`${API_BASE}/admin/users/${PWD_TARGET_ID}/password`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ password: newPass }),
+        });
+
+        if (await handleAuthErrors(res)) return;
+        if (!res.ok) throw new Error(await res.text());
+
+        if (pwdModalStatus) pwdModalStatus.textContent = "Guardado.";
+        closePwdModal();
+        alert("Contraseña actualizada.");
+      } catch (e) {
+        console.error(e);
+        if (pwdModalStatus) pwdModalStatus.textContent = "Error.";
+        alert("No se pudo cambiar la contraseña.");
+      } finally {
+        pwdModalConfirm?.removeAttribute("disabled");
+        pwdModalConfirm?.classList.remove("opacity-70");
+      }
+    });
+
+    // -------------------------
+    // Usuarios (solo admin)
+    // -------------------------
+    const usersTbody = document.getElementById("usersTbody");
+    const usersStatus = document.getElementById("usersStatus");
+
+    async function loadUsers() {
+      if (!usersTbody) return;
+      if (!IS_ADMIN) return;
+
+      usersTbody.innerHTML =
+        '<tr><td colspan="5" class="py-4 text-[#9CA3AF]">Cargando…</td></tr>';
+
+      try {
+        const res = await fetch(`${API_BASE}/admin/users?limit=200&offset=0`, {
+          headers: authHeaders(),
+        });
+
+        if (await handleAuthErrors(res)) return;
+        if (!res.ok) throw new Error(await res.text());
+
+        const data = await res.json();
+        const items = data.items || [];
+
+        if (usersStatus) usersStatus.textContent = `${data.total || items.length} usuarios`;
+
+        if (!items.length) {
+          usersTbody.innerHTML =
+            '<tr><td colspan="5" class="py-4 text-[#9CA3AF]">Sin usuarios.</td></tr>';
+          return;
+        }
+
+        usersTbody.innerHTML = "";
+
+        items.forEach((u) => {
+          const tr = document.createElement("tr");
+          tr.className = "border-b border-[#E5E7EB] last:border-b-0";
+
+          const role = u.is_admin ? "Admin" : "Analista";
+          const state = u.is_active ? "Activo" : "Deshabilitado";
+
+          tr.innerHTML = `
+            <td class="py-3 pr-4 text-[#111827]">${u.email || "-"}</td>
+            <td class="py-3 pr-4 text-[#111827]">${u.full_name || "-"}</td>
+            <td class="py-3 pr-4 text-[#111827]">${role}</td>
+            <td class="py-3 pr-4 text-[#6B7280]">${state}</td>
+            <td class="py-3 text-right">
+              <div class="flex gap-2 justify-end flex-wrap">
+                <button
+                  data-action="change-password"
+                  data-id="${u.id}"
+                  data-email="${u.email || ""}"
+                  class="h-8 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[11px] hover:bg-[#F9FAFB]"
+                >
+                  Cambiar contraseña
+                </button>
+
+                <button
+                  data-action="toggle-role"
+                  data-id="${u.id}"
+                  data-admin="${u.is_admin}"
+                  class="h-8 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[11px] hover:bg-[#F9FAFB]"
+                >
+                  ${u.is_admin ? "Hacer Analista" : "Hacer Admin"}
+                </button>
+
+                <button
+                  data-action="toggle-active"
+                  data-id="${u.id}"
+                  data-active="${u.is_active}"
+                  class="h-8 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[11px] hover:bg-[#F9FAFB]"
+                >
+                  ${u.is_active ? "Deshabilitar" : "Habilitar"}
+                </button>
+
+                <button
+                  data-action="delete"
+                  data-id="${u.id}"
+                  class="h-8 w-8 flex items-center justify-center rounded-lg border border-[#E5E7EB] bg-white hover:bg-[#FEF2F2]"
+                  title="Eliminar usuario"
+                  aria-label="Eliminar usuario"
+                >
+                  <img src="/svg/trash.svg" class="h-4 w-4" alt="Eliminar" loading="lazy" />
+                </button>
+              </div>
+            </td>
+          `;
+
+          usersTbody.appendChild(tr);
+        });
+      } catch (e) {
+        console.error(e);
+        usersTbody.innerHTML =
+          '<tr><td colspan="5" class="py-4 text-[#DC2626]">Error al cargar usuarios.</td></tr>';
+      }
+    }
+
+    usersTbody?.addEventListener("click", async (e) => {
+      if (!IS_ADMIN) return;
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      const btn = t.closest("button");
+      if (!btn) return;
+
+      const action = btn.getAttribute("data-action");
+      const id = btn.getAttribute("data-id");
+      if (!action || !id) return;
+
+      try {
+        if (action === "change-password") {
+          const email = btn.getAttribute("data-email") || "";
+          openPwdModal(id, email);
+          return;
+        }
+
+        if (action === "toggle-role") {
+          const isAdmin = btn.getAttribute("data-admin") === "true";
+          const res = await fetch(`${API_BASE}/admin/users/${id}`, {
+            method: "PATCH",
+            headers: authHeaders(),
+            body: JSON.stringify({ is_admin: !isAdmin }),
+          });
+          if (await handleAuthErrors(res)) return;
+          if (!res.ok) throw new Error(await res.text());
+          await loadUsers();
+        }
+
+        if (action === "toggle-active") {
+          const isActive = btn.getAttribute("data-active") === "true";
+          const res = await fetch(`${API_BASE}/admin/users/${id}`, {
+            method: "PATCH",
+            headers: authHeaders(),
+            body: JSON.stringify({ is_active: !isActive }),
+          });
+          if (await handleAuthErrors(res)) return;
+          if (!res.ok) throw new Error(await res.text());
+          await loadUsers();
+        }
+
+        if (action === "delete") {
+          if (!confirm("¿Eliminar este usuario?")) return;
+          const res = await fetch(`${API_BASE}/admin/users/${id}`, {
+            method: "DELETE",
+            headers: authHeaders(),
+          });
+          if (await handleAuthErrors(res)) return;
+          if (!res.ok) throw new Error(await res.text());
+          await loadUsers();
+        }
+      } catch (err) {
+        console.error(err);
+        alert("No se pudo completar la acción.");
+      }
+    });
+
+    // -------------------------
+    // Export / Limpieza (tal cual)
+    // -------------------------
+    const exportCsvBtn = document.getElementById("exportCsvBtn");
+    const cleanUploadedLogsBtn = document.getElementById("cleanUploadedLogsBtn");
+    const backupAndWipeDbBtn = document.getElementById("backupAndWipeDbBtn");
+    const maintenanceStatus = document.getElementById("maintenanceStatus");
+
+    // Modal export
+    const exportModal = document.getElementById("exportModal");
+    const exportModalClose = document.getElementById("exportModalClose");
+    const exportModalCancel = document.getElementById("exportModalCancel");
+    const exportModalConfirm = document.getElementById("exportModalConfirm");
+    const exportModalStatus = document.getElementById("exportModalStatus");
+    const exportDays = document.getElementById("exportDays");
+
+    const exportPresetAll = document.getElementById("exportPresetAll");
+    const exportPresetIncidents = document.getElementById("exportPresetIncidents");
+    const exportPresetEvents = document.getElementById("exportPresetEvents");
+
+    const setExportChecks = (vals) => {
+      document.querySelectorAll("[data-export-include]").forEach((el) => {
+        if (!(el instanceof HTMLInputElement)) return;
+        el.checked = vals.includes(el.value);
+      });
+    };
+
+    const openExportModal = () => {
+      if (!exportModal) return;
+      exportModal.classList.remove("hidden");
+      exportModal.classList.add("flex");
+      if (exportModalStatus) exportModalStatus.textContent = "";
+    };
+
+    const closeExportModal = () => {
+      if (!exportModal) return;
+      exportModal.classList.add("hidden");
+      exportModal.classList.remove("flex");
+    };
+
+    exportCsvBtn?.addEventListener("click", () => {
+      openExportModal();
+    });
+
+    exportModalClose?.addEventListener("click", closeExportModal);
+    exportModalCancel?.addEventListener("click", closeExportModal);
+
+    exportModal?.addEventListener("click", (e) => {
+      if (e.target === exportModal) closeExportModal();
+    });
+
+    exportPresetAll?.addEventListener("click", () => {
+      setExportChecks(["events","alerts","incidents","entities","rules_v2","incident_rules","api_keys","users"]);
+    });
+    exportPresetIncidents?.addEventListener("click", () => {
+      setExportChecks(["incidents","alerts","entities"]);
+    });
+    exportPresetEvents?.addEventListener("click", () => {
+      setExportChecks(["events","entities"]);
+    });
+
+    exportModalConfirm?.addEventListener("click", async () => {
+      try {
+        if (exportModalStatus) exportModalStatus.textContent = "Generando export…";
+        exportModalConfirm?.setAttribute("disabled", "true");
+        exportModalConfirm?.classList.add("opacity-70");
+
+        const include = [];
+        document.querySelectorAll("[data-export-include]").forEach((el) => {
+          if (el instanceof HTMLInputElement && el.checked) include.push(el.value);
+        });
+
+        if (!include.length) {
+          if (exportModalStatus) exportModalStatus.textContent = "Selecciona al menos una opción.";
+          exportModalConfirm?.removeAttribute("disabled");
+          exportModalConfirm?.classList.remove("opacity-70");
+          return;
+        }
+
+        const daysVal =
+          exportDays instanceof HTMLSelectElement ? parseInt(exportDays.value, 10) : 3650;
+
+        const payload = { days: daysVal, include };
+
+        const res = await fetch(`${API_BASE}/admin/maintenance/export.zip`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify(payload),
+        });
+
+        if (await handleAuthErrors(res)) return;
+        if (!res.ok) throw new Error(await res.text());
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "sentinelx_export.zip";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+
+        if (exportModalStatus) exportModalStatus.textContent = "Export listo.";
+        closeExportModal();
+        if (maintenanceStatus) maintenanceStatus.textContent = "Export listo.";
+      } catch (e) {
+        console.error(e);
+        if (exportModalStatus) exportModalStatus.textContent = "Error.";
+        alert("No se pudo exportar.");
+      } finally {
+        exportModalConfirm?.removeAttribute("disabled");
+        exportModalConfirm?.classList.remove("opacity-70");
+      }
+    });
+
+    cleanUploadedLogsBtn?.addEventListener("click", async () => {
+      try {
+        if (!confirm("¿Borrar archivos en /uploaded_logs?")) return;
+        if (maintenanceStatus) maintenanceStatus.textContent = "Limpiando archivos…";
+
+        const res = await fetch(`${API_BASE}/admin/maintenance/clean-uploaded-logs`, {
+          method: "POST",
+          headers: authHeaders(),
+        });
+        if (await handleAuthErrors(res)) return;
+        if (!res.ok) throw new Error(await res.text());
+
+        const data = await res.json();
+        if (maintenanceStatus) maintenanceStatus.textContent = `Listo. Archivos borrados: ${data.removed_files || 0}`;
+      } catch (e) {
+        console.error(e);
+        if (maintenanceStatus) maintenanceStatus.textContent = "Error.";
+        alert("No se pudo limpiar /uploaded_logs.");
+      }
+    });
+
+    backupAndWipeDbBtn?.addEventListener("click", async () => {
+      try {
+        if (!confirm("¿Respaldar y limpiar TODA la BD? (Se conserva users y api_keys)")) return;
+        if (maintenanceStatus) maintenanceStatus.textContent = "Respaldando y limpiando BD…";
+
+        const res = await fetch(`${API_BASE}/admin/maintenance/backup-and-wipe-db`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ export_days: 3650 }),
+        });
+
+        if (await handleAuthErrors(res)) return;
+        if (!res.ok) throw new Error(await res.text());
+
+        const data = await res.json();
+        if (maintenanceStatus) {
+          maintenanceStatus.textContent =
+            `Listo. Backup: ${data.backup_path || "OK"} · Tablas limpiadas: ${data.wiped_tables_count || 0}`;
+        }
+      } catch (e) {
+        console.error(e);
+        if (maintenanceStatus) maintenanceStatus.textContent = "Error.";
+        alert("No se pudo respaldar/limpiar la BD.");
+      }
+    });
+
+    // -------------------------
+    // Inicial
+    // -------------------------
+    await loadMe();
+    await loadPrefs();
+    await loadAlertSettings();
+    await loadUsers();
+  </script>
+</DashboardLayout>

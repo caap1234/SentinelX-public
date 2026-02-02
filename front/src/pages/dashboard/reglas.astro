@@ -1,0 +1,989 @@
+---
+import DashboardLayout from "../../layouts/DashboardLayout.astro";
+import HeaderBar from "../../components/dashboard/HeaderBar.astro";
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000";
+---
+
+<DashboardLayout pageTitle="SentinelX SIEM – Reglas">
+  <HeaderBar
+    title="Reglas"
+    subtitle="Crea, edita y administra reglas de correlación."
+    showFilters={false}
+  />
+
+  <section class="flex-1 px-8 py-6 space-y-6">
+    <!-- REGLAS -->
+    <div class="rounded-xl bg-white border border-[#E5E7EB] shadow-sm overflow-hidden">
+      <div class="px-8 py-4 border-b border-[#E5E7EB]">
+        <h2 class="text-[13px] font-semibold text-center text-[#111827]">
+          Reglas v2
+        </h2>
+      </div>
+
+      <div class="px-8 py-5">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+          <div>
+            <p class="text-[12px] text-[#6B7280] max-w-2xl leading-5">
+              Administra reglas por <span class="font-medium">source</span> y
+              <span class="font-medium">event_type</span>.
+              Puedes activar/desactivar reglas y ajustar ventana/cooldown/condición.
+            </p>
+          </div>
+
+          <div class="flex items-center gap-3 justify-end shrink-0">
+            <a
+              href="/dashboard/reglas/reprocesar"
+              class="h-10 px-4 rounded-lg border border-[#E5E7EB] bg-white text-[12px] font-semibold
+                    hover:bg-[#F9FAFB] transition-colors inline-flex items-center"
+              title="Reprocesar eventos"
+            >
+              Ir a reprocesar
+            </a>
+
+            <div class="text-[12px] text-[#6B7280]" id="rulesStatus"></div>
+          </div>
+        </div>
+
+        <!-- Filters + actions -->
+        <div class="mt-4 flex flex-col lg:flex-row lg:items-end gap-3">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Filtrar por Source</label>
+              <input
+                id="filterSource"
+                type="text"
+                placeholder="APACHE_ACCESS"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                      placeholder:text-[#9CA3AF]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Filtrar por Event Type</label>
+              <input
+                id="filterEventType"
+                type="text"
+                placeholder="http_access"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                      placeholder:text-[#9CA3AF]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Estado</label>
+              <select
+                id="filterEnabled"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              >
+                <option value="">Todos</option>
+                <option value="true">Habilitadas</option>
+                <option value="false">Deshabilitadas</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex gap-2 lg:justify-end shrink-0">
+            <button
+              type="button"
+              id="reloadRulesBtn"
+              class="h-10 px-4 rounded-lg border border-[#E5E7EB] bg-white text-[12px] font-semibold
+                    hover:bg-[#F9FAFB] transition-colors"
+            >
+              Recargar
+            </button>
+
+            <button
+              type="button"
+              id="openCreateBtn"
+              class="h-10 px-5 rounded-lg bg-[#F97316] text-white text-[12px] font-semibold
+                    hover:bg-[#EA580C] transition-colors"
+            >
+              Nueva regla
+            </button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full text-left text-[12px]">
+            <thead>
+              <tr class="border-b border-[#E5E7EB] text-[#6B7280]">
+                <th class="py-3 pr-4">ID</th>
+                <th class="py-3 pr-4">Nombre</th>
+                <th class="py-3 pr-4">Source</th>
+                <th class="py-3 pr-4">Event Type</th>
+                <th class="py-3 pr-4">Sev</th>
+                <th class="py-3 pr-4">Estado</th>
+                <th class="py-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="rulesTbody">
+              <tr><td colspan="7" class="py-4 text-[#9CA3AF]">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL CREATE/EDIT -->
+  <div id="ruleModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40"></div>
+
+    <div class="relative w-full h-full flex items-center justify-center p-4">
+      <div class="w-full max-w-3xl rounded-xl bg-white border border-[#E5E7EB] shadow-sm overflow-hidden">
+        <!-- header -->
+        <div class="px-6 py-4 border-b border-[#E5E7EB] flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h3 id="modalTitle" class="text-[13px] font-semibold text-[#111827]">Nueva regla</h3>
+            <p class="text-[11px] text-[#6B7280] leading-5">
+              Configura match/group_by/window/condition. El contenido tiene scroll interno.
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              id="validateJsonBtn"
+              class="h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[11px] font-semibold
+                    hover:bg-[#F9FAFB] transition-colors"
+              title="Valida los campos JSON del formulario"
+            >
+              Validar JSON
+            </button>
+
+            <button
+              type="button"
+              id="closeModalBtn"
+              class="h-9 w-9 rounded-lg border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB]"
+              aria-label="Cerrar"
+              title="Cerrar"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- body (scroll) -->
+        <div class="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="md:col-span-2">
+              <label class="text-[11px] text-[#6B7280]">Nombre</label>
+              <input
+                id="fName"
+                type="text"
+                placeholder="SSH brute force"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                      placeholder:text-[#9CA3AF]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Severidad (1-10)</label>
+              <input
+                id="fSeverity"
+                type="number"
+                min="1"
+                max="30"
+                value="3"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Source</label>
+              <select
+                id="fSource"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              >
+                <option value="">Selecciona…</option>
+                <option value="APACHE_ACCESS">APACHE_ACCESS</option>
+                <option value="APACHE_ERROR">APACHE_ERROR</option>
+                <option value="PANEL_ACCESS">PANEL_ACCESS</option>
+                <option value="PANEL_LOGIN">PANEL_LOGIN</option>
+                <option value="EXIM_MAINLOG">EXIM_MAINLOG</option>
+                <option value="FILEMANAGER">FILEMANAGER</option>
+                <option value="LFD">LFD</option>
+                <option value="MODSEC">MODSEC</option>
+                <option value="SAR_STATS">SAR_STATS</option>
+                <option value="SYSTEM">SYSTEM</option>
+                <option value="SSH_SECURE">SSH_SECURE</option>
+                <option value="WP_ERROR">WP_ERROR</option>
+              </select>
+              <p class="mt-1 text-[11px] text-[#9CA3AF]">Fuente de logs (parser).</p>
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Event Type</label>
+              <select
+                id="fEventType"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              >
+                <option value="">Selecciona…</option>
+                <option value="http_access">http_access</option>
+                <option value="http_error">http_error</option>
+                <option value="panel_access">panel_access</option>
+                <option value="mail_flow">mail_flow</option>
+                <option value="auth_login">auth_login</option>
+                <option value="file_action">file_action</option>
+                <option value="security_signal">security_signal</option>
+                <option value="waf_block">waf_block</option>
+                <option value="metric">metric</option>
+                <option value="system_log">system_log</option>
+                <option value="app_error">app_error</option>
+              </select>
+              <p class="mt-1 text-[11px] text-[#9CA3AF]">Tipo normalizado del evento.</p>
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Estado</label>
+              <div class="mt-1 flex items-center gap-2">
+                <button
+                  type="button"
+                  data-toggle="rule-enabled"
+                  class="relative inline-flex h-7 w-12 items-center rounded-full bg-[#F97316] transition-colors shrink-0"
+                  aria-pressed="true"
+                >
+                  <span class="sr-only">Habilitada</span>
+                  <span
+                    data-toggle-knob
+                    class="inline-block h-5 w-5 transform rounded-full bg-white shadow translate-x-6 transition-transform"
+                  ></span>
+                </button>
+                <span class="text-[12px] text-[#6B7280]" id="enabledLabel">Habilitada</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Window (seg)</label>
+              <input
+                id="fWindow"
+                type="number"
+                min="1"
+                value="300"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Cooldown (seg)</label>
+              <input
+                id="fCooldown"
+                type="number"
+                min="0"
+                value="900"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Version</label>
+              <input
+                id="fVersion"
+                type="number"
+                min="1"
+                value="1"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[11px] text-[#6B7280]">Descripción</label>
+            <input
+              id="fDescription"
+              type="text"
+              placeholder="Detecta intentos repetidos..."
+              class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                    placeholder:text-[#9CA3AF]
+                    focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="text-[11px] text-[#6B7280]">group_by (JSON array)</label>
+              <textarea
+                id="fGroupBy"
+                rows="3"
+                class="mt-1 w-full rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 py-2 text-[13px] text-[#111827]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              >["server"]</textarea>
+              <p id="errGroupBy" class="mt-1 text-[11px] text-[#DC2626] hidden"></p>
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">tags (JSON array)</label>
+              <textarea
+                id="fTags"
+                rows="3"
+                class="mt-1 w-full rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 py-2 text-[13px] text-[#111827]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              >[]</textarea>
+              <p id="errTags" class="mt-1 text-[11px] text-[#DC2626] hidden"></p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="text-[11px] text-[#6B7280]">match (JSON)</label>
+              <textarea
+                id="fMatch"
+                rows="6"
+                class="mt-1 w-full rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 py-2 text-[13px] text-[#111827]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              >&#123;&#125;</textarea>
+
+              <p class="mt-1 text-[11px] text-[#9CA3AF] leading-5">
+                Ej:
+                <code class="font-mono">
+                  &#123;"extra.http.path": &#123;"contains": "/xmlrpc.php"&#125;, "extra.http.status": &#123;"&gt;=": 400&#125;&#125;
+                </code>
+              </p>
+
+              <p id="errMatch" class="mt-1 text-[11px] text-[#DC2626] hidden"></p>
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">condition (expr segura)</label>
+              <textarea
+                id="fCondition"
+                rows="6"
+                class="mt-1 w-full rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 py-2 text-[13px] text-[#111827]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              >count &gt;= 10</textarea>
+              <p class="mt-1 text-[11px] text-[#9CA3AF] leading-5">
+                Variables: count, server, source, event_type, group_key, geo_country, asn_number.
+              </p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="text-[11px] text-[#6B7280]">evidence (JSON)</label>
+              <textarea
+                id="fEvidence"
+                rows="4"
+                class="mt-1 w-full rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 py-2 text-[13px] text-[#111827]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              >&#123;"last_n": 10, "include_raw": true&#125;</textarea>
+              <p id="errEvidence" class="mt-1 text-[11px] text-[#DC2626] hidden"></p>
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">emit (JSON)</label>
+              <textarea
+                id="fEmit"
+                rows="4"
+                class="mt-1 w-full rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 py-2 text-[13px] text-[#111827]
+                      focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"
+              >&#123;&#125;</textarea>
+              <p id="errEmit" class="mt-1 text-[11px] text-[#DC2626] hidden"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- footer -->
+        <div class="px-6 py-4 border-t border-[#E5E7EB] flex items-center justify-between gap-3">
+          <span id="modalStatus" class="text-[12px] text-[#6B7280]"></span>
+
+          <div class="flex gap-2">
+            <button
+              type="button"
+              id="deleteRuleBtn"
+              class="hidden h-10 px-4 rounded-lg bg-[#FEE2E2] text-[#B91C1C] text-[12px] font-semibold
+                    hover:bg-[#FECACA] transition-colors"
+            >
+              Eliminar
+            </button>
+
+            <button
+              type="button"
+              id="saveRuleBtn"
+              class="h-10 px-6 rounded-lg bg-[#F97316] text-white text-[12px] font-semibold
+                    hover:bg-[#EA580C] transition-colors"
+            >
+              Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" define:vars={{ API_BASE }}>
+    const token =
+      localStorage.getItem("sentinelx_token") ||
+      sessionStorage.getItem("sentinelx_token");
+
+    if (!token) window.location.href = "/login";
+
+    const authHeaders = () => ({
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    });
+
+    const handleAuthErrors = async (res) => {
+      if (res.status === 401) {
+        localStorage.removeItem("sentinelx_token");
+        sessionStorage.removeItem("sentinelx_token");
+        window.location.href = "/login";
+        return true;
+      }
+      return false;
+    };
+
+    // --------- Toggle helper ----------
+    const setupToggle = (id, initialOn = true, onChange) => {
+      const btn = document.querySelector(`[data-toggle="${id}"]`);
+      if (!btn) return null;
+      const knob = btn.querySelector("[data-toggle-knob]");
+      if (!knob) return null;
+
+      const setState = (on) => {
+        if (on) {
+          btn.classList.remove("bg-[#D1D5DB]");
+          btn.classList.add("bg-[#F97316]");
+          knob.classList.remove("translate-x-1");
+          knob.classList.add("translate-x-6");
+          btn.setAttribute("aria-pressed", "true");
+        } else {
+          btn.classList.remove("bg-[#F97316]");
+          btn.classList.add("bg-[#D1D5DB]");
+          knob.classList.remove("translate-x-6");
+          knob.classList.add("translate-x-1");
+          btn.setAttribute("aria-pressed", "false");
+        }
+        onChange?.(on);
+      };
+
+      setState(initialOn);
+
+      btn.addEventListener("click", () => {
+        const isOn = btn.getAttribute("aria-pressed") === "true";
+        setState(!isOn);
+      });
+
+      return { setState, getState: () => btn.getAttribute("aria-pressed") === "true" };
+    };
+
+    // --------- DOM refs ----------
+    const rulesTbody = document.getElementById("rulesTbody");
+    const rulesStatus = document.getElementById("rulesStatus");
+    const reloadRulesBtn = document.getElementById("reloadRulesBtn");
+    const openCreateBtn = document.getElementById("openCreateBtn");
+
+    const filterSource = document.getElementById("filterSource");
+    const filterEventType = document.getElementById("filterEventType");
+    const filterEnabled = document.getElementById("filterEnabled");
+
+    // Modal
+    const ruleModal = document.getElementById("ruleModal");
+    const modalTitle = document.getElementById("modalTitle");
+    const closeModalBtn = document.getElementById("closeModalBtn");
+    const saveRuleBtn = document.getElementById("saveRuleBtn");
+    const deleteRuleBtn = document.getElementById("deleteRuleBtn");
+    const modalStatus = document.getElementById("modalStatus");
+    const validateJsonBtn = document.getElementById("validateJsonBtn");
+
+    const enabledLabel = document.getElementById("enabledLabel");
+
+    const fName = document.getElementById("fName");
+    const fSeverity = document.getElementById("fSeverity");
+    const fSource = document.getElementById("fSource");
+    const fEventType = document.getElementById("fEventType");
+    const fWindow = document.getElementById("fWindow");
+    const fCooldown = document.getElementById("fCooldown");
+    const fVersion = document.getElementById("fVersion");
+    const fDescription = document.getElementById("fDescription");
+    const fGroupBy = document.getElementById("fGroupBy");
+    const fTags = document.getElementById("fTags");
+    const fMatch = document.getElementById("fMatch");
+    const fCondition = document.getElementById("fCondition");
+    const fEvidence = document.getElementById("fEvidence");
+    const fEmit = document.getElementById("fEmit");
+
+    // JSON error labels
+    const errGroupBy = document.getElementById("errGroupBy");
+    const errTags = document.getElementById("errTags");
+    const errMatch = document.getElementById("errMatch");
+    const errEvidence = document.getElementById("errEvidence");
+    const errEmit = document.getElementById("errEmit");
+
+    const ruleEnabledToggle = setupToggle("rule-enabled", true, (on) => {
+      if (enabledLabel) enabledLabel.textContent = on ? "Habilitada" : "Deshabilitada";
+    });
+
+    // --------- State ----------
+    let RULES = [];
+    let editingRuleId = null;
+
+    // ✅ SOLO UNA VEZ: show/hide modal (aquí se arregla tu error)
+    const showModal = () => {
+      ruleModal?.classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+      validateJsonFields({ showOk: false });
+    };
+
+    const hideModal = () => {
+      ruleModal?.classList.add("hidden");
+      document.body.style.overflow = "";
+      editingRuleId = null;
+      if (modalStatus) modalStatus.textContent = "";
+      deleteRuleBtn?.classList.add("hidden");
+      clearJsonErrors();
+    };
+
+    ruleModal?.addEventListener("click", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      if (t === ruleModal || t.classList.contains("bg-black/40")) hideModal();
+    });
+
+    closeModalBtn?.addEventListener("click", hideModal);
+
+    function clearJsonErrors() {
+      const pairs = [
+        [fGroupBy, errGroupBy],
+        [fTags, errTags],
+        [fMatch, errMatch],
+        [fEvidence, errEvidence],
+        [fEmit, errEmit],
+      ];
+      pairs.forEach(([field, err]) => {
+        if (err) {
+          err.textContent = "";
+          err.classList.add("hidden");
+        }
+        if (field) {
+          field.classList.remove("border-[#DC2626]", "ring-2", "ring-[#DC2626]/40");
+          field.classList.add("border-[#E5E7EB]");
+        }
+      });
+    }
+
+    function markJsonError(field, errEl, msg) {
+      if (errEl) {
+        errEl.textContent = msg;
+        errEl.classList.remove("hidden");
+      }
+      if (field) {
+        field.classList.remove("border-[#E5E7EB]");
+        field.classList.add("border-[#DC2626]", "ring-2", "ring-[#DC2626]/40");
+      }
+    }
+
+    function safeJsonParseStrict(text, kind) {
+      const s = String(text ?? "").trim();
+      if (!s) {
+        if (kind === "array") return [];
+        if (kind === "object") return {};
+        return null;
+      }
+      const v = JSON.parse(s);
+      if (kind === "array" && !Array.isArray(v)) throw new Error("Debe ser un JSON array.");
+      if (kind === "object" && (v === null || Array.isArray(v) || typeof v !== "object"))
+        throw new Error("Debe ser un JSON object.");
+      return v;
+    }
+
+    function validateJsonFields({ showOk = true } = {}) {
+      clearJsonErrors();
+      let ok = true;
+
+      try { safeJsonParseStrict(fGroupBy?.value, "array"); }
+      catch (e) { ok = false; markJsonError(fGroupBy, errGroupBy, `group_by inválido: ${e.message}`); }
+
+      try { safeJsonParseStrict(fTags?.value, "array"); }
+      catch (e) { ok = false; markJsonError(fTags, errTags, `tags inválido: ${e.message}`); }
+
+      try { safeJsonParseStrict(fMatch?.value, "object"); }
+      catch (e) { ok = false; markJsonError(fMatch, errMatch, `match inválido: ${e.message}`); }
+
+      try { safeJsonParseStrict(fEvidence?.value, "object"); }
+      catch (e) { ok = false; markJsonError(fEvidence, errEvidence, `evidence inválido: ${e.message}`); }
+
+      try { safeJsonParseStrict(fEmit?.value, "object"); }
+      catch (e) { ok = false; markJsonError(fEmit, errEmit, `emit inválido: ${e.message}`); }
+
+      if (modalStatus) {
+        if (ok && showOk) modalStatus.textContent = "JSON OK.";
+        if (!ok) modalStatus.textContent = "Corrige los campos JSON marcados.";
+      }
+      return ok;
+    }
+
+    const debounce = (fn, ms = 250) => {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), ms);
+      };
+    };
+
+    const validateLive = debounce(() => validateJsonFields({ showOk: false }), 300);
+    [fGroupBy, fTags, fMatch, fEvidence, fEmit].forEach((el) => {
+      el?.addEventListener("input", validateLive);
+      el?.addEventListener("blur", () => validateJsonFields({ showOk: false }));
+    });
+
+    validateJsonBtn?.addEventListener("click", () => validateJsonFields({ showOk: true }));
+
+    function ensureSelectHasValue(selectEl, value) {
+      if (!selectEl || !value) return;
+      const v = String(value);
+      const exists = Array.from(selectEl.options).some((o) => o.value === v);
+      if (!exists) {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = `${v} (custom)`;
+        selectEl.appendChild(opt);
+      }
+    }
+
+    async function fetchRules() {
+      if (!rulesTbody) return;
+
+      rulesTbody.innerHTML =
+        '<tr><td colspan="7" class="py-4 text-[#9CA3AF]">Cargando…</td></tr>';
+
+      try {
+        const qs = new URLSearchParams();
+        const s = (filterSource?.value || "").trim();
+        const e = (filterEventType?.value || "").trim();
+        const en = (filterEnabled?.value || "").trim();
+
+        if (s) qs.set("source", s);
+        if (e) qs.set("event_type", e);
+        if (en !== "") qs.set("enabled", en);
+
+        const url = `${API_BASE}/rules-v2${qs.toString() ? "?" + qs.toString() : ""}`;
+
+        const res = await fetch(url, { headers: authHeaders() });
+        if (await handleAuthErrors(res)) return;
+
+        if (res.status === 403) {
+          rulesTbody.innerHTML =
+            '<tr><td colspan="7" class="py-4 text-[#DC2626]">Acceso denegado. Solo Admin.</td></tr>';
+          if (rulesStatus) rulesStatus.textContent = "";
+          return;
+        }
+
+        if (!res.ok) throw new Error(await res.text());
+
+        RULES = await res.json();
+        if (rulesStatus) rulesStatus.textContent = `${RULES.length} reglas`;
+
+        if (!RULES.length) {
+          rulesTbody.innerHTML =
+            '<tr><td colspan="7" class="py-4 text-[#9CA3AF]">Sin reglas.</td></tr>';
+          return;
+        }
+
+        rulesTbody.innerHTML = "";
+        RULES.forEach((r) => {
+          const tr = document.createElement("tr");
+          tr.className = "border-b border-[#E5E7EB] last:border-b-0";
+
+          const state = r.enabled ? "Habilitada" : "Deshabilitada";
+          const stateCls = r.enabled ? "text-[#065F46] bg-[#D1FAE5]" : "text-[#374151] bg-[#E5E7EB]";
+
+          tr.innerHTML = `
+            <td class="py-3 pr-4 text-[#111827]">${r.id}</td>
+            <td class="py-3 pr-4 text-[#111827]">${r.name || "-"}</td>
+            <td class="py-3 pr-4 text-[#111827]">${r.source || "-"}</td>
+            <td class="py-3 pr-4 text-[#111827]">${r.event_type || "-"}</td>
+            <td class="py-3 pr-4 text-[#111827]">${r.severity ?? "-"}</td>
+            <td class="py-3 pr-4">
+              <span class="inline-flex items-center h-7 px-3 rounded-full text-[11px] font-medium ${stateCls}">
+                ${state}
+              </span>
+            </td>
+            <td class="py-3 text-right">
+              <div class="flex gap-2 justify-end">
+                <button
+                  data-action="toggle"
+                  data-id="${r.id}"
+                  data-enabled="${r.enabled}"
+                  class="h-8 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[11px] hover:bg-[#F9FAFB]"
+                >
+                  ${r.enabled ? "Desactivar" : "Activar"}
+                </button>
+
+                <button
+                  data-action="edit"
+                  data-id="${r.id}"
+                  class="h-8 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[11px] hover:bg-[#F9FAFB]"
+                >
+                  Editar
+                </button>
+
+                <button
+                  data-action="delete"
+                  data-id="${r.id}"
+                  class="h-8 w-8 flex items-center justify-center rounded-lg border border-[#E5E7EB] bg-white hover:bg-[#FEF2F2]"
+                  title="Eliminar regla"
+                  aria-label="Eliminar regla"
+                >
+                  <img src="/svg/trash.svg" class="h-4 w-4" alt="Eliminar" loading="lazy" />
+                </button>
+              </div>
+            </td>
+          `;
+          rulesTbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+        rulesTbody.innerHTML =
+          '<tr><td colspan="7" class="py-4 text-[#DC2626]">Error al cargar reglas.</td></tr>';
+      }
+    }
+
+    reloadRulesBtn?.addEventListener("click", fetchRules);
+    filterSource?.addEventListener("keydown", (e) => e.key === "Enter" && fetchRules());
+    filterEventType?.addEventListener("keydown", (e) => e.key === "Enter" && fetchRules());
+    filterEnabled?.addEventListener("change", fetchRules);
+
+    function resetForm() {
+      fName.value = "";
+      fSeverity.value = "3";
+      fSource.value = "";
+      fEventType.value = "";
+      fWindow.value = "300";
+      fCooldown.value = "900";
+      fVersion.value = "1";
+      fDescription.value = "";
+      fGroupBy.value = '["server"]';
+      fTags.value = "[]";
+      fMatch.value = "{}";
+      fCondition.value = "count >= 10";
+      fEvidence.value = '{"last_n": 10, "include_raw": true}';
+      fEmit.value = "{}";
+      ruleEnabledToggle?.setState(true);
+      clearJsonErrors();
+    }
+
+    function fillForm(rule) {
+      fName.value = rule.name || "";
+      fSeverity.value = String(rule.severity ?? 3);
+
+      ensureSelectHasValue(fSource, rule.source);
+      fSource.value = rule.source || "";
+
+      ensureSelectHasValue(fEventType, rule.event_type);
+      fEventType.value = rule.event_type || "";
+
+      fWindow.value = String(rule.window_seconds ?? 300);
+      fCooldown.value = String(rule.cooldown_seconds ?? 900);
+      fVersion.value = String(rule.version ?? 1);
+      fDescription.value = rule.description || "";
+
+      fGroupBy.value = JSON.stringify(rule.group_by ?? [], null, 2);
+      fTags.value = JSON.stringify(rule.tags ?? [], null, 2);
+      fMatch.value = JSON.stringify(rule.match ?? {}, null, 2);
+      fCondition.value = rule.condition ?? "";
+      fEvidence.value = JSON.stringify(rule.evidence ?? {}, null, 2);
+      fEmit.value = JSON.stringify(rule.emit ?? {}, null, 2);
+
+      ruleEnabledToggle?.setState(!!rule.enabled);
+      clearJsonErrors();
+    }
+
+    const openModalForCreate = () => {
+      editingRuleId = null;
+      resetForm();
+      if (modalTitle) modalTitle.textContent = "Nueva regla";
+      deleteRuleBtn?.classList.add("hidden");
+      showModal();
+    };
+
+    openCreateBtn?.addEventListener("click", openModalForCreate);
+
+    async function loadRuleById(id) {
+      const res = await fetch(`${API_BASE}/rules-v2/${id}`, { headers: authHeaders() });
+      if (await handleAuthErrors(res)) return null;
+      if (res.status === 403) {
+        alert("Acceso denegado. Solo Admin.");
+        return null;
+      }
+      if (!res.ok) throw new Error(await res.text());
+      return await res.json();
+    }
+
+    rulesTbody?.addEventListener("click", async (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      const btn = t.closest("button");
+      if (!btn) return;
+
+      const action = btn.getAttribute("data-action");
+      const id = btn.getAttribute("data-id");
+      if (!action || !id) return;
+
+      try {
+        if (action === "toggle") {
+          const enabled = btn.getAttribute("data-enabled") === "true";
+          const endpoint = enabled ? "disable" : "enable";
+          const res = await fetch(`${API_BASE}/rules-v2/${id}/${endpoint}`, {
+            method: "POST",
+            headers: authHeaders(),
+          });
+          if (await handleAuthErrors(res)) return;
+          if (res.status === 403) {
+            alert("Acceso denegado. Solo Admin.");
+            return;
+          }
+          if (!res.ok) throw new Error(await res.text());
+          await fetchRules();
+          return;
+        }
+
+        if (action === "edit") {
+          const rule = await loadRuleById(id);
+          if (!rule) return;
+
+          editingRuleId = rule.id;
+          if (modalTitle) modalTitle.textContent = `Editar regla #${rule.id}`;
+          deleteRuleBtn?.classList.remove("hidden");
+
+          fillForm(rule);
+          showModal();
+          return;
+        }
+
+        if (action === "delete") {
+          if (!confirm("¿Eliminar esta regla?")) return;
+          const res = await fetch(`${API_BASE}/rules-v2/${id}`, {
+            method: "DELETE",
+            headers: authHeaders(),
+          });
+          if (await handleAuthErrors(res)) return;
+          if (res.status === 403) {
+            alert("Acceso denegado. Solo Admin.");
+            return;
+          }
+          if (!res.ok) throw new Error(await res.text());
+          await fetchRules();
+          return;
+        }
+      } catch (err) {
+        console.error(err);
+        alert("No se pudo completar la acción.");
+      }
+    });
+
+    deleteRuleBtn?.addEventListener("click", async () => {
+      if (!editingRuleId) return;
+      try {
+        if (!confirm(`¿Eliminar la regla #${editingRuleId}?`)) return;
+        if (modalStatus) modalStatus.textContent = "Eliminando…";
+
+        const res = await fetch(`${API_BASE}/rules-v2/${editingRuleId}`, {
+          method: "DELETE",
+          headers: authHeaders(),
+        });
+
+        if (await handleAuthErrors(res)) return;
+        if (res.status === 403) {
+          alert("Acceso denegado. Solo Admin.");
+          return;
+        }
+        if (!res.ok) throw new Error(await res.text());
+
+        if (modalStatus) modalStatus.textContent = "Eliminada.";
+        hideModal();
+        await fetchRules();
+      } catch (err) {
+        console.error(err);
+        if (modalStatus) modalStatus.textContent = "Error.";
+        alert("No se pudo eliminar.");
+      }
+    });
+
+    saveRuleBtn?.addEventListener("click", async () => {
+      try {
+        const jsonOk = validateJsonFields({ showOk: false });
+        if (!jsonOk) return;
+
+        if (modalStatus) modalStatus.textContent = "Guardando…";
+
+        const name = (fName.value || "").trim();
+        const source = (fSource.value || "").trim();
+        const eventType = (fEventType.value || "").trim();
+        if (!name || !source || !eventType) {
+          if (modalStatus) modalStatus.textContent = "Nombre, source y event_type son requeridos.";
+          return;
+        }
+
+        const groupBy = safeJsonParseStrict(fGroupBy.value, "array");
+        const tags = safeJsonParseStrict(fTags.value, "array");
+        const match = safeJsonParseStrict(fMatch.value, "object");
+        const evidence = safeJsonParseStrict(fEvidence.value, "object");
+        const emit = safeJsonParseStrict(fEmit.value, "object");
+
+        const payload = {
+          name,
+          description: (fDescription.value || "").trim() || null,
+          enabled: ruleEnabledToggle?.getState() ?? true,
+          source: source.toUpperCase(),
+          event_type: eventType.toLowerCase(),
+          severity: Number(fSeverity.value || 3) || 3,
+          window_seconds: Number(fWindow.value || 300) || 300,
+          cooldown_seconds: Number(fCooldown.value || 900) || 900,
+          version: Number(fVersion.value || 1) || 1,
+          group_by: groupBy,
+          tags: tags,
+          match: match,
+          condition: (fCondition.value || "").trim(),
+          evidence: evidence,
+          emit: emit,
+          let: {},
+        };
+
+        const isEdit = !!editingRuleId;
+        const url = isEdit ? `${API_BASE}/rules-v2/${editingRuleId}` : `${API_BASE}/rules-v2`;
+        const method = isEdit ? "PATCH" : "POST";
+
+        const res = await fetch(url, {
+          method,
+          headers: authHeaders(),
+          body: JSON.stringify(payload),
+        });
+
+        if (await handleAuthErrors(res)) return;
+        if (res.status === 403) {
+          alert("Acceso denegado. Solo Admin.");
+          return;
+        }
+        if (!res.ok) throw new Error(await res.text());
+
+        if (modalStatus) modalStatus.textContent = "Guardado.";
+        hideModal();
+        await fetchRules();
+      } catch (err) {
+        console.error(err);
+        if (modalStatus) modalStatus.textContent = "Error.";
+        alert("No se pudo guardar la regla.");
+      }
+    });
+
+    // Init
+    await fetchRules();
+  </script>
+</DashboardLayout>

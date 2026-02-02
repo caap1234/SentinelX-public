@@ -1,0 +1,104 @@
+[
+  {
+    "id": "reco-sqli",
+    "title": "Intentos de SQL Injection",
+    "severityLabel": "Alta",
+    "level": "high",
+    "category": "application",
+    "description": "Se identificaron múltiples payloads SQLi desde 168.90.45.120 hacia formularios de la aplicación.",
+    "impact": "Posible fuga de información sensible o acceso a la base de datos.",
+    "actions": [
+      "Bloquear IP en firewall o WAF",
+      "Habilitar reglas OWASP en el WAF",
+      "Revisar y parametrizar consultas SQL vulnerables"
+    ],
+    "ip": "168.90.45.120",
+    "server": "svgs289",
+    "lastEvent": "2025-11-24 09:50"
+  },
+  {
+    "id": "reco-ssh-bruteforce",
+    "title": "Bloqueo urgente de IP maliciosa",
+    "severityLabel": "Alta",
+    "level": "high",
+    "category": "network",
+    "description": "La IP 45.200.10.55 generó 193 solicitudes a /wp-login.php, patrón típico de fuerza bruta automatizada.",
+    "impact": "Alto riesgo de compromiso de cuentas administrativas.",
+    "actions": [
+      "Bloquear IP en CSF o firewall",
+      "Habilitar reCAPTCHA en login",
+      "Limitar intentos mediante fail2ban"
+    ],
+    "ip": "45.200.10.55",
+    "server": "svgr263",
+    "lastEvent": "2025-11-24 07:01"
+  },
+  {
+    "id": "reco-portscan",
+    "title": "Escaneo de puertos desde Rusia",
+    "severityLabel": "Media",
+    "level": "medium",
+    "category": "network",
+    "description": "La IP 77.91.121.48 realizó un escaneo rápido de 23 puertos expuestos.",
+    "impact": "Intento de reconocimiento de servicios para futuros ataques dirigidos.",
+    "actions": [
+      "Activar IDS o monitoreo activo de red",
+      "Restringir puertos no utilizados en firewall",
+      "Revisar reglas de seguridad en servicios expuestos"
+    ],
+    "ip": "77.91.121.48",
+    "server": "svgt272",
+    "lastEvent": "2025-11-24 08:14"
+  },
+  {
+    "id": "reco-api-misuse",
+    "title": "Uso incorrecto de API",
+    "severityLabel": "Media",
+    "level": "medium",
+    "category": "api",
+    "description": "Se detectaron múltiples intentos con API Key inválida desde 54.122.33.29.",
+    "impact": "Probable intento de descubrir claves válidas o abusar de la API.",
+    "actions": [
+      "Rotar claves de API comprometidas",
+      "Añadir rate limit por IP y por clave",
+      "Habilitar verificación adicional (HMAC, firmas)"
+    ],
+    "ip": "54.122.33.29",
+    "server": "svgs289",
+    "lastEvent": "2025-11-23 19:12"
+  },
+  {
+    "id": "reco-email-auth",
+    "title": "Errores 500 recurrentes",
+    "severityLabel": "Baja",
+    "level": "low",
+    "category": "email",
+    "description": "Se observan errores 500 recurrentes al autenticar contra el servidor SMTP.",
+    "impact": "Degradación del servicio de correo y posibles rebotes en envíos masivos.",
+    "actions": [
+      "Revisar autenticación SMTP (usuario/clave, TLS)",
+      "Verificar límites de conexiones simultáneas",
+      "Monitorizar tiempos de respuesta del servicio"
+    ],
+    "ip": "local",
+    "server": "svdm050",
+    "lastEvent": "2025-11-22 20:10"
+  },
+  {
+    "id": "reco-system-updates",
+    "title": "Actualizaciones críticas pendientes",
+    "severityLabel": "Alta",
+    "level": "high",
+    "category": "system",
+    "description": "Se detectó un kernel desactualizado con vulnerabilidades conocidas de escalación de privilegios.",
+    "impact": "Un atacante con acceso limitado podría obtener permisos de root.",
+    "actions": [
+      "Planear ventana de mantenimiento para actualizar el sistema",
+      "Aplicar parches de seguridad pendientes",
+      "Reiniciar el servidor una vez aplicadas las actualizaciones"
+    ],
+    "ip": "—",
+    "server": "svgs147",
+    "lastEvent": "2025-11-20 16:30"
+  }
+]

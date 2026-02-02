@@ -1,0 +1,31 @@
+# /etc/sentinelx-agent.sources
+# Formato: TAG:PATH:NAME
+# - TAG: etiqueta (ej: lfd, maillog, apache_access)
+# - PATH: ruta del log
+# - NAME: nombre lógico (solo para filename)
+
+# Ejemplos comunes (ajusta según tu servidor):
+
+system:/var/log/messages:system_messages
+secure:/var/log/secure:secure
+
+lfd:/var/log/lfd.log:lfd
+
+exim_mainlog:/var/log/exim_mainlog:exim_mainlog
+maillog:/var/log/maillog:maillog
+maillog:/var/log/mail.log:mail_log
+
+# Apache (CentOS/RHEL)
+apache_access:/var/log/httpd/access_log:apache_access
+apache_error:/var/log/httpd/error_log:apache_error
+
+# Apache (Debian/Ubuntu)
+apache_access:/var/log/apache2/access.log:apache2_access
+apache_error:/var/log/apache2/error.log:apache2_error
+
+# cPanel
+apache_access:/usr/local/apache/logs/access_log:cpanel_apache_access
+apache_error:/usr/local/apache/logs/error_log:cpanel_apache_error
+modsec:/usr/local/apache/logs/modsec_audit.log:modsec_audit
+cpanel_access:/usr/local/cpanel/logs/access_log:cpanel_access
+

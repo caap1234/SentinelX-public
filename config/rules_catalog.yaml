@@ -1,0 +1,771 @@
+###############################################
+# SENTINELX SIEM - CATÁLOGO COMPLETO DE REGLAS
+# Version: v1.0
+###############################################
+
+################################################
+# A* — AUTENTICACIÓN / LOGIN / ACCESS CONTROL
+################################################
+
+- id: "A1"
+  category: "auth"
+  name: "Muchos fallos de autenticación"
+  severity: "medium"
+  scope: "local"
+  logs: ["exim_mainlog", "dovecot", "panel", "wp_error_log", "ssh"]
+  params:
+    threshold_failures: 10
+    window_minutes: 15
+
+- id: "A2"
+  category: "auth"
+  name: "Múltiples usuarios desde una sola IP"
+  severity: "medium"
+  scope: "local"
+  logs: ["exim_mainlog", "dovecot", "panel", "ssh"]
+  params:
+    threshold_users: 5
+    window_minutes: 20
+
+- id: "A3"
+  category: "auth"
+  name: "Fallos consecutivos seguidos de login exitoso"
+  severity: "critical"
+  scope: "local_global"
+  logs: ["exim_mainlog", "dovecot", "panel", "wp_auth", "ssh"]
+  params:
+    min_failures_before_success: 5
+    window_minutes: 30
+
+- id: "A4"
+  category: "auth"
+  name: "Un usuario atacado por múltiples IP"
+  severity: "high"
+  scope: "local"
+  logs: ["exim_mainlog", "dovecot", "wp_auth"]
+  params:
+    threshold_ips: 5
+    window_minutes: 20
+
+- id: "A5"
+  category: "auth"
+  name: "Credenciales válidas desde país inesperado"
+  severity: "high"
+  scope: "global"
+  logs: ["exim_mainlog", "dovecot", "panel", "ssh"]
+  params:
+    allowed_countries: ["MX", "US", "CA"]
+    strict: false
+
+- id: "A6"
+  category: "auth"
+  name: "Acceso sospechoso al panel"
+  severity: "high"
+  scope: "local"
+  logs: ["panel"]
+  params:
+    risk_ips: ["TOR", "VPN"]
+    notify: true
+
+- id: "A7"
+  category: "auth"
+  name: "Usuario cambiando de IP bruscamente"
+  severity: "medium"
+  scope: "local"
+  logs: ["panel", "ssh", "wp_auth"]
+  params:
+    max_ip_changes: 3
+    window_minutes: 30
+
+- id: "A8"
+  category: "auth"
+  name: "Login de alto privilegio desde IP no reconocida"
+  severity: "critical"
+  scope: "global"
+  logs: ["panel", "ssh"]
+  params:
+    privileged_users: ["root", "admin", "reseller"]
+
+- id: "A9"
+  category: "auth"
+  name: "Autenticación SMTP/IMAP repetida"
+  severity: "medium"
+  scope: "local"
+  logs: ["exim_mainlog", "dovecot"]
+  params:
+    threshold_attempts: 15
+    window_minutes: 15
+
+
+################################################
+# W* — WEB / HTTP / BOTS / APACHE
+################################################
+
+- id: "W1"
+  category: "web"
+  name: "Golpes masivos desde bot"
+  severity: "medium"
+  scope: "local"
+  logs: ["apache_access"]
+  params:
+    threshold_requests: 200
+    window_minutes: 10
+
+- id: "W2"
+  category: "web"
+  name: "Escaneo de paths comunes"
+  severity: "medium"
+  scope: "local"
+  logs: ["apache_access"]
+  params:
+    threshold_unique_paths: 15
+    threshold_hits: 50
+    window_minutes: 10
+    count_only_error_status: true
+  patterns:
+    - "/phpmyadmin"
+    - "/wp-admin/install"
+    - ".env"
+    - "/.git/"
+
+- id: "W3"
+  category: "web"
+  name: "Ataques XML-RPC"
+  severity: "high"
+  scope: "local"
+  logs: ["apache_access"]
+  params:
+    min_hits: 50
+    window_minutes: 10
+  patterns:
+    - "/xmlrpc.php"
+
+- id: "W4"
+  category: "web"
+  name: "Picos de tráfico anormales"
+  severity: "medium"
+  scope: "local"
+  logs: ["apache_access"]
+  params:
+    threshold_requests: 1000
+    window_minutes: 5
+
+- id: "W5"
+  category: "web"
+  name: "Abuso de recursos web"
+  severity: "high"
+  scope: "local"
+  logs: ["apache_access"]
+  params:
+    bandwidth_mb: 500
+    window_minutes: 30
+
+- id: "W6"
+  category: "web"
+  name: "Explotación de vulnerabilidad conocida"
+  severity: "critical"
+  scope: "local"
+  logs: ["apache_access"]
+  patterns:
+    - "union select"
+    - "sleep("
+    - "concat("
+    - "../etc/passwd"
+    - "wp-config.php"
+
+- id: "W7"
+  category: "web"
+  name: "Errores 404/403/500 excesivos"
+  severity: "medium"
+  scope: "local"
+  logs: ["apache_access"]
+  params:
+    threshold_errors: 50
+    window_minutes: 10
+
+- id: "W8"
+  category: "web"
+  name: "Acceso a archivos sensibles"
+  severity: "critical"
+  scope: "local"
+  logs: ["apache_access"]
+  patterns:
+    - "/etc/passwd"
+    - "composer.json"
+    - ".git"
+    - ".env"
+
+- id: "W9"
+  category: "web"
+  name: "User Agent malicioso"
+  severity: "medium"
+  scope: "local"
+  logs: ["apache_access"]
+  patterns:
+    - "WPScan"
+    - "sqlmap"
+    - "nikto"
+
+- id: "W10"
+  category: "web"
+  name: "Acceso masivo a wp-login.php"
+  severity: "high"
+  scope: "local"
+  logs: ["apache_access"]
+  params:
+    threshold_requests: 40
+    window_minutes: 10
+  patterns:
+    - "/wp-login.php"
+
+- id: "W11"
+  category: "web"
+  name: "Requests HEAD/OPTIONS sospechosos"
+  severity: "low"
+  scope: "local"
+  logs: ["apache_access"]
+  params:
+    threshold_requests: 30
+
+- id: "W12"
+  category: "web"
+  name: "Spray distribuido por rango /24"
+  severity: "medium"
+  scope: "local"
+  logs: ["apache_access"]
+  params:
+    subnet_prefix: 24
+    threshold_requests: 250
+    window_minutes: 10
+
+- id: "W13"
+  category: "web"
+  name: "ModSecurity blocks repetidos por IP"
+  severity: "medium"
+  scope: "local"
+  logs: ["modsec_audit"]
+  params:
+    window_seconds: 600
+    threshold: 5
+    unique_by_uri: true
+
+################################################
+# M* — ARCHIVOS / SISTEMA / INTEGRIDAD
+################################################
+
+- id: "M1"
+  category: "files"
+  name: "Archivos nuevos en rutas sensibles"
+  severity: "high"
+  scope: "local"
+  logs: ["filemanager", "modsec", "system"]
+  params:
+    sensitive_paths:
+      - "/wp-admin/"
+      - "/wp-includes/"
+      - "/public_html/"
+
+- id: "M2"
+  category: "files"
+  name: "Cambios inusuales de permisos"
+  severity: "medium"
+  scope: "local"
+  logs: ["filemanager"]
+  params:
+    forbidden_modes:
+      - "777"
+      - "775"
+
+- id: "M3"
+  category: "files"
+  name: "Modificaciones masivas"
+  severity: "high"
+  scope: "local"
+  logs: ["filemanager"]
+  params:
+    threshold_changes: 30
+    window_minutes: 20
+
+- id: "M4"
+  category: "files"
+  name: "Subida de PHP sospechosa"
+  severity: "critical"
+  scope: "local"
+  logs: ["filemanager"]
+  patterns:
+    - ".php"
+    - ".phtml"
+
+- id: "M5"
+  category: "files"
+  name: "Patrón de malware encontrado"
+  severity: "critical"
+  scope: "local"
+  logs: ["modsec", "system"]
+  patterns:
+    - "eval(base64"
+    - "gzuncompress("
+    - "assert("
+
+- id: "M6"
+  category: "files"
+  name: "Archivos eliminados del core"
+  severity: "critical"
+  scope: "local"
+  logs: ["wp_error_log"]
+  patterns:
+    - "Failed opening required"
+
+- id: "M7"
+  category: "files"
+  name: "Archivos con obfuscación"
+  severity: "high"
+  scope: "local"
+  logs: ["filemanager"]
+  patterns:
+    - "base64"
+    - "rot13"
+    - "strrev"
+
+- id: "M8"
+  category: "files"
+  name: "Scripts autoinstaladores"
+  severity: "medium"
+  scope: "local"
+  logs: ["filemanager"]
+  patterns:
+    - "installer.php"
+    - "setup.php"
+
+- id: "M9"
+  category: "files"
+  name: "Cambios sospechosos en .htaccess"
+  severity: "high"
+  scope: "local"
+  logs: ["filemanager"]
+  patterns:
+    - "RewriteRule"
+    - "Redirect"
+
+- id: "M10"
+  category: "files"
+  name: "Archivos peligrosos en /tmp"
+  severity: "critical"
+  scope: "local"
+  logs: ["system"]
+  patterns:
+    - "/tmp/"
+    - "php"
+    - "sh"
+
+
+################################################
+# X* — CORREO / SMTP / SPAM / EXIM
+################################################
+
+- id: "X1"
+  category: "mail"
+  name: "Fallos consecutivos SMTP"
+  severity: "medium"
+  scope: "local"
+  logs: ["exim_mainlog"]
+  params:
+    threshold_failures: 15
+    window_minutes: 15
+
+- id: "X2"
+  category: "mail"
+  name: "Fallos + login SMTP exitoso"
+  severity: "high"
+  scope: "local"
+  logs: ["exim_mainlog"]
+  params:
+    min_failures_before_success: 5
+    window_minutes: 20
+
+- id: "X3"
+  category: "mail"
+  name: "Pico de correos enviados"
+  severity: "critical"
+  scope: "local"
+  logs: ["exim_mainlog"]
+  params:
+    threshold_per_hour: 500
+
+- id: "X4"
+  category: "mail"
+  name: "Envíos a dominios inexistentes"
+  severity: "medium"
+  scope: "local"
+  logs: ["exim_mainlog"]
+
+- id: "X5"
+  category: "mail"
+  name: "Conexiones SMTP desde país de riesgo"
+  severity: "high"
+  scope: "global"
+  logs: ["exim_mainlog"]
+  params:
+    risky_countries: ["RU", "CN", "IR", "KP"]
+
+- id: "X6"
+  category: "mail"
+  name: "Reintentos SMTP excesivos"
+  severity: "low"
+  scope: "local"
+  logs: ["exim_mainlog"]
+  params:
+    threshold_retries: 20
+
+
+################################################
+# P* — PANEL (CPANEL / DA / WHM)
+################################################
+
+- id: "P1"
+  category: "panel"
+  name: "Errores recurrentes en panel"
+  severity: "medium"
+  scope: "local"
+  logs: ["panel"]
+  params:
+    threshold_errors: 10
+
+- id: "P2"
+  category: "panel"
+  name: "Acceso al panel desde IP desconocida"
+  severity: "medium"
+  scope: "local"
+  logs: ["panel"]
+
+- id: "P3"
+  category: "panel"
+  name: "Cambios sensibles de configuración"
+  severity: "high"
+  scope: "local"
+  logs: ["panel"]
+
+- id: "P4"
+  category: "panel"
+  name: "Creación/eliminación sospechosa de cuentas"
+  severity: "high"
+  scope: "local"
+  logs: ["panel"]
+
+- id: "P5"
+  category: "panel"
+  name: "Acceso root/reseller inusual"
+  severity: "critical"
+  scope: "global"
+  logs: ["panel"]
+
+
+################################################
+# WP* — WORDPRESS
+################################################
+
+- id: "WP1"
+  category: "wordpress"
+  name: "Archivo de core faltante"
+  severity: "critical"
+  scope: "local"
+  logs: ["wp_error_log"]
+  patterns:
+    - "Failed opening required"
+
+- id: "WP2"
+  category: "wordpress"
+  name: "Archivo de core modificado"
+  severity: "high"
+  scope: "local"
+  logs: ["wp_error_log"]
+
+- id: "WP3"
+  category: "wordpress"
+  name: "Plugin crítico faltante"
+  severity: "medium"
+  scope: "local"
+  logs: ["wp_error_log"]
+
+- id: "WP4"
+  category: "wordpress"
+  name: "Theme faltante"
+  severity: "medium"
+  scope: "local"
+  logs: ["wp_error_log"]
+
+- id: "WP5"
+  category: "wordpress"
+  name: "PHP Fatal Error"
+  severity: "high"
+  scope: "local"
+  logs: ["wp_error_log"]
+  patterns:
+    - "PHP Fatal error"
+
+- id: "WP6"
+  category: "wordpress"
+  name: "PHP Warning crítico"
+  severity: "medium"
+  scope: "local"
+  logs: ["wp_error_log"]
+  patterns:
+    - "PHP Warning"
+
+- id: "WP7"
+  category: "wordpress"
+  name: "Funciones inexistentes"
+  severity: "medium"
+  scope: "local"
+  logs: ["wp_error_log"]
+
+- id: "WP8"
+  category: "wordpress"
+  name: "Subida de archivo sospechoso"
+  severity: "high"
+  scope: "local"
+  logs: ["wp_error_log", "filemanager"]
+
+- id: "WP9"
+  category: "wordpress"
+  name: "Ataques a wp-login.php"
+  severity: "high"
+  scope: "local"
+  logs: ["apache_access"]
+  patterns:
+    - "/wp-login.php"
+
+- id: "WP10"
+  category: "wordpress"
+  name: "Ataques a XML-RPC"
+  severity: "high"
+  scope: "local"
+  logs: ["apache_access"]
+  patterns:
+    - "/xmlrpc.php"
+
+
+################################################
+# S* — SISTEMA / SSH / KERNEL / DAEMONS
+################################################
+
+- id: "S1"
+  category: "system"
+  name: "Fuerza bruta SSH"
+  severity: "high"
+  scope: "local"
+  logs: ["ssh"]
+
+- id: "S2"
+  category: "system"
+  name: "Login SSH desde país inesperado"
+  severity: "high"
+  scope: "global"
+  logs: ["ssh"]
+
+- id: "S3"
+  category: "system"
+  name: "Elevación sospechosa de privilegios"
+  severity: "high"
+  scope: "local"
+  logs: ["system"]
+
+- id: "S4"
+  category: "system"
+  name: "Errores de kernel / OOM"
+  severity: "critical"
+  scope: "local"
+  logs: ["system"]
+
+- id: "S5"
+  category: "system"
+  name: "Procesos desconocidos"
+  severity: "medium"
+  scope: "local"
+  logs: ["system"]
+
+- id: "S6"
+  category: "system"
+  name: "Cambios en cron sospechosos"
+  severity: "medium"
+  scope: "local"
+  logs: ["system"]
+
+- id: "S7"
+  category: "system"
+  name: "Reinicio de servicios"
+  severity: "medium"
+  scope: "local"
+  logs: ["system"]
+
+
+################################################
+# R* — RECURSOS / CARGA / PERFORMANCE
+################################################
+
+- id: "R1"
+  category: "resources"
+  name: "Carga de CPU elevada"
+  severity: "medium"
+  scope: "local"
+  logs:
+    - "system"
+    - "sar_stats"
+  params:
+    threshold_load_5: 7.0
+    threshold_load_15: 8.0
+
+- id: "R2"
+  category: "resources"
+  name: "Consumo anormal de RAM"
+  severity: "medium"
+  scope: "local"
+  logs:
+    - "system"
+    - "sar_stats"
+  params:
+    threshold_mem_pct: 90
+
+- id: "R3"
+  category: "resources"
+  name: "I/O excesivo"
+  severity: "medium"
+  scope: "local"
+  logs:
+    - "system"
+    - "sar_stats"
+  params:
+    threshold_io_pct: 95
+
+- id: "R4"
+  category: "resources"
+  name: "Uso del disco crítico"
+  severity: "high"
+  scope: "local"
+  logs: ["system"]
+
+- id: "R5"
+  category: "resources"
+  name: "Bloqueos de procesos"
+  severity: "medium"
+  scope: "local"
+  logs: ["system"]
+
+- id: "R6"
+  category: "resources"
+  name: "OOM Killer activado"
+  severity: "high"
+  scope: "local"
+  logs: ["system"]
+
+- id: "R7"
+  category: "resources"
+  name: "Uso excesivo de swap"
+  severity: "low"
+  scope: "local"
+  logs: ["system"]
+
+################################################
+# INF* — ANOMALÍAS / INTEGRIDAD / INCONSISTENCIAS
+################################################
+
+- id: "INF1"
+  category: "integrity"
+  name: "Archivos con patrones inusuales"
+  severity: "medium"
+  scope: "local"
+  logs: ["filemanager"]
+  params:
+    enabled: false
+
+- id: "INF2"
+  category: "integrity"
+  name: "Eventos repetitivos en distintos logs"
+  severity: "low"
+  scope: "local_global"
+  logs: ["*"]
+  params:
+    window_minutes: 30
+    threshold_hits: 80
+    min_sources: 2
+    exclude_sources: ["apache_access"]
+
+- id: "INF3"
+  category: "integrity"
+  name: "Errores de librerías"
+  severity: "low"
+  scope: "local"
+  logs: ["wp_error_log", "system"]
+
+- id: "INF4"
+  category: "integrity"
+  name: "Cambios en binarios del sistema"
+  severity: "critical"
+  scope: "local"
+  logs: ["system"]
+
+- id: "INF5"
+  category: "integrity"
+  name: "Archivos corruptos"
+  severity: "medium"
+  scope: "local"
+  logs: ["system"]
+
+- id: "INF6"
+  category: "integrity"
+  name: "Reinicio frecuente de servicios"
+  severity: "medium"
+  scope: "local"
+  logs: ["system"]
+
+- id: "INF7"
+  category: "integrity"
+  name: "Configuraciones inconsistentes"
+  severity: "medium"
+  scope: "local"
+  logs: ["system"]
+
+
+################################################
+# MS* — MULTI-SERVER / CORRELACIÓN DISTRIBUIDA
+################################################
+
+- id: "MS1"
+  category: "multi_server"
+  name: "Misma IP atacando varios servidores"
+  severity: "critical"
+  scope: "global"
+  logs: ["*"]
+  params:
+    window_days: 7
+
+- id: "MS2"
+  category: "multi_server"
+  name: "Usuario atacado en múltiples servidores"
+  severity: "high"
+  scope: "global"
+  logs: ["*"]
+
+- id: "MS3"
+  category: "multi_server"
+  name: "IP marcada como bot a nivel global"
+  severity: "medium"
+  scope: "global"
+  logs: ["*"]
+
+- id: "MS4"
+  category: "multi_server"
+  name: "Ataque sincronizado multi-servidor"
+  severity: "critical"
+  scope: "global"
+  logs: ["*"]
+
+- id: "MS5"
+  category: "multi_server"
+  name: "Fallos en un servidor + éxito en otro"
+  severity: "critical"
+  scope: "global"
+  logs: ["*"]
+  params:
+    window_minutes: 30
+

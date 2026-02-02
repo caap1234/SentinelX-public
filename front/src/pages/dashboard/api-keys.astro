@@ -1,0 +1,404 @@
+---
+/**
+ * src/pages/dashboard/api-keys.astro
+ * Página de administración de API Keys (admin)
+ */
+import DashboardLayout from "../../layouts/DashboardLayout.astro";
+import HeaderBar from "../../components/dashboard/HeaderBar.astro";
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000";
+---
+
+<DashboardLayout pageTitle="SentinelX SIEM – API Keys">
+  <HeaderBar
+    title="API Keys"
+    subtitle="Crea y administra API keys para ingesta desde servidores. La llave solo se muestra una vez al crearla."
+    showFilters={true}
+    showServerFilter={true}
+    showDateFilter={false}
+    showSeverityFilter={false}
+  />
+
+  <section class="px-8 py-6 bg-[#F4F5F7] min-h-[calc(100vh-73px)]">
+    <div class="max-w-[1100px] mx-auto space-y-6">
+      <!-- ================= Crear API Key ================= -->
+      <div class="rounded-2xl bg-white border border-[#E5E7EB] shadow-sm p-6">
+        <h2 class="text-[15px] font-semibold text-[#111827]">Crear API Key</h2>
+        <p class="mt-1 text-[12px] text-[#6B7280]">
+          Selecciona el servidor y asigna un nombre. La llave solo se muestra una vez.
+        </p>
+
+        <form id="apiKeyCreateForm" class="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Servidor -->
+          <div>
+            <label class="block text-[12px] font-medium text-[#374151] mb-2">Servidor</label>
+            <select
+              id="serverInput"
+              class="w-full h-10 rounded-lg border border-[#E5E7EB] px-3 text-[12px]
+                     focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+            >
+              <option value="">Cargando…</option>
+            </select>
+          </div>
+
+          <!-- Nombre -->
+          <div>
+            <label class="block text-[12px] font-medium text-[#374151] mb-2">Nombre</label>
+            <input
+              id="nameInput"
+              type="text"
+              placeholder='Ej: "svgs401-ingest"'
+              class="w-full h-10 rounded-lg border border-[#E5E7EB] px-3 text-[12px]
+                     focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+            />
+          </div>
+
+          <!-- Botón -->
+          <div class="flex items-end gap-3">
+            <button
+              type="submit"
+              class="h-10 px-4 rounded-lg bg-[#111827] text-white text-[12px] font-semibold hover:bg-black transition-colors"
+            >
+              Crear API Key
+            </button>
+            <span id="createStatus" class="text-[12px] text-[#6B7280]"></span>
+          </div>
+        </form>
+
+        <!-- API key generada -->
+        <div id="plainKeyBox" class="hidden mt-5 rounded-lg border border-[#f19c0a] bg-[#f9e7d1] p-4">
+          <p class="text-[12px] font-semibold text-[#92400E]">
+            API Key generada (cópiala ahora, no se mostrará otra vez):
+          </p>
+          <div class="mt-2 flex gap-2">
+            <input
+              id="plainKeyOutput"
+              readonly
+              class="w-full h-10 rounded-lg border bg-white border-[#E5E7EB] px-3 text-[12px]"
+            />
+            <button
+              type="button"
+              id="copyKeyBtn"
+              class="h-10 px-3 rounded-lg border bg-white border-[#E5E7EB] text-[12px] hover:bg-[#F9FAFB]"
+            >
+              Copiar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= Listado ================= -->
+      <div class="rounded-2xl bg-white border border-[#E5E7EB] shadow-sm p-6">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-[15px] font-semibold text-[#111827]">API Keys registradas</h2>
+            <p class="mt-1 text-[12px] text-[#6B7280]">
+              La lista se filtra por el selector de servidores del Header. Por seguridad, la llave no se vuelve a mostrar.
+            </p>
+          </div>
+          <div class="text-[12px] text-[#6B7280] mt-1">
+            Filtro: <span class="font-medium" id="filterLabel">Todos</span>
+          </div>
+        </div>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full text-left text-[12px]">
+            <thead>
+              <tr class="border-b border-[#E5E7EB] text-[#6B7280]">
+                <th class="py-3 pr-4">Nombre</th>
+                <th class="py-3 pr-4">Servidor</th>
+                <th class="py-3 pr-4">Estado</th>
+                <th class="py-3 pr-4">Creada</th>
+                <th class="py-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="keysTbody">
+              <tr><td colspan="5" class="py-4 text-[#9CA3AF]">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" define:vars={{ API_BASE }}>
+      const token =
+        localStorage.getItem("sentinelx_token") ||
+        sessionStorage.getItem("sentinelx_token");
+
+      if (!token) window.location.href = "/login";
+
+      const authHeaders = () => ({
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      });
+
+      const serverSelect = document.getElementById("serverInput");
+      const keysTbody = document.getElementById("keysTbody");
+      const createForm = document.getElementById("apiKeyCreateForm");
+      const createStatus = document.getElementById("createStatus");
+      const plainKeyBox = document.getElementById("plainKeyBox");
+      const plainKeyOutput = document.getElementById("plainKeyOutput");
+      const copyKeyBtn = document.getElementById("copyKeyBtn");
+      const filterLabel = document.getElementById("filterLabel");
+
+      let currentServerFilter = "all";
+
+      const handleAuthErrors = async (res) => {
+        if (res.status === 401) {
+          localStorage.removeItem("sentinelx_token");
+          sessionStorage.removeItem("sentinelx_token");
+          window.location.href = "/login";
+          return true;
+        }
+        return false;
+      };
+
+      // -------------------------
+      // cargar servidores (para el SELECT de creación)
+      // -------------------------
+      async function loadServers() {
+        if (!serverSelect) return;
+
+        try {
+          const res = await fetch("/data/servers.json", { cache: "no-store" });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+          const data = await res.json();
+          const servers = Array.isArray(data) ? data : [];
+
+          serverSelect.innerHTML = '<option value="">Seleccionar servidor</option>';
+
+          servers.forEach((s) => {
+            const id = typeof s === "string" ? s : s?.id;
+            const label = typeof s === "string" ? s : (s?.label || s?.id);
+            if (!id) return;
+
+            const opt = document.createElement("option");
+            opt.value = id;
+            opt.textContent = label || id;
+            serverSelect.appendChild(opt);
+          });
+        } catch (e) {
+          console.error("No se pudo cargar /data/servers.json", e);
+          serverSelect.innerHTML = '<option value="">Error cargando servidores</option>';
+        }
+      }
+
+      // -------------------------
+      // cargar API keys
+      // (✅ revocadas NO aparecen porque el backend las filtra)
+      // -------------------------
+      async function loadKeys() {
+        if (!keysTbody) return;
+
+        keysTbody.innerHTML =
+          '<tr><td colspan="5" class="py-4 text-[#9CA3AF]">Cargando…</td></tr>';
+
+        try {
+          const params = new URLSearchParams({ limit: "200", offset: "0" });
+          if (currentServerFilter && currentServerFilter !== "all") {
+            params.set("server", currentServerFilter);
+          }
+
+          const res = await fetch(`${API_BASE}/api-keys?${params.toString()}`, {
+            headers: authHeaders(),
+          });
+
+          if (await handleAuthErrors(res)) return;
+          if (!res.ok) throw new Error(await res.text());
+
+          const data = await res.json();
+          const items = data.items || [];
+
+          if (!items.length) {
+            keysTbody.innerHTML =
+              '<tr><td colspan="5" class="py-4 text-[#9CA3AF]">Sin API keys.</td></tr>';
+            return;
+          }
+
+          keysTbody.innerHTML = "";
+
+          items.forEach((k) => {
+            const tr = document.createElement("tr");
+            tr.className = "border-b border-[#E5E7EB] last:border-b-0";
+
+            const statusBadge = k.is_active
+              ? '<span class="inline-flex items-center rounded-full bg-[#ECFDF5] px-2 py-1 text-[11px] text-[#065F46]">Activa</span>'
+              : '<span class="inline-flex items-center rounded-full bg-[#fdecec] px-2 py-1 text-[11px] text-[#ba0000]">Inactiva</span>';
+
+            tr.innerHTML = `
+              <td class="py-3 pr-4 text-[#111827]">${k.name || "-"}</td>
+              <td class="py-3 pr-4 text-[#111827]">${k.server || "-"}</td>
+              <td class="py-3 pr-4">${statusBadge}</td>
+              <td class="py-3 pr-4 text-[#6B7280]">${k.created_at || "-"}</td>
+              <td class="py-3 text-right">
+                <div class="flex gap-2 justify-end">
+                  <button
+                    data-action="toggle"
+                    data-id="${k.id}"
+                    data-active="${k.is_active}"
+                    class="h-8 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[11px] hover:bg-[#F9FAFB]"
+                  >
+                    ${k.is_active ? "Desactivar" : "Activar"}
+                  </button>
+
+                  <button
+                    data-action="revoke"
+                    data-id="${k.id}"
+                    class="h-8 w-8 flex items-center justify-center rounded-lg border border-[#E5E7EB] bg-white hover:bg-[#FEF2F2]"
+                    title="Revocar API Key"
+                    aria-label="Revocar API Key"
+                  >
+                    <img src="/svg/trash.svg" class="h-4 w-4" alt="Revocar" loading="lazy" />
+                  </button>
+                </div>
+              </td>
+            `;
+
+            keysTbody.appendChild(tr);
+          });
+        } catch (e) {
+          console.error("Error cargando API keys", e);
+          keysTbody.innerHTML =
+            '<tr><td colspan="5" class="py-4 text-[#DC2626]">Error al cargar API keys.</td></tr>';
+        }
+      }
+
+      // -------------------------
+      // Acciones tabla
+      // -------------------------
+      keysTbody?.addEventListener("click", async (e) => {
+        const t = e.target;
+        if (!(t instanceof HTMLElement)) return;
+
+        const btn = t.closest("button");
+        if (!btn) return;
+
+        const action = btn.getAttribute("data-action");
+        const id = btn.getAttribute("data-id");
+        if (!action || !id) return;
+
+        if (action === "toggle") {
+          const active = btn.getAttribute("data-active") === "true";
+          const endpoint = active ? "disable" : "enable";
+
+          try {
+            const res = await fetch(`${API_BASE}/api-keys/${id}/${endpoint}`, {
+              method: "PATCH",
+              headers: authHeaders(),
+            });
+            if (await handleAuthErrors(res)) return;
+
+            // si backend responde 400 por "revocada", solo avisa
+            if (!res.ok) {
+              const msg = await res.text();
+              console.error(msg);
+              alert("No se pudo cambiar el estado de la API key.");
+              return;
+            }
+
+            await loadKeys();
+          } catch (err) {
+            console.error(err);
+            alert("No se pudo cambiar el estado de la API key.");
+          }
+        }
+
+        if (action === "revoke") {
+          if (!confirm("¿Revocar esta API key? La llave quedará inválida y no podrá volver a usarse.")) return;
+
+          try {
+            const res = await fetch(`${API_BASE}/api-keys/${id}/revoke`, {
+              method: "POST",
+              headers: authHeaders(),
+            });
+            if (await handleAuthErrors(res)) return;
+            if (!res.ok) throw new Error(await res.text());
+            await loadKeys(); // ✅ desaparecerá porque backend ya no la listará
+          } catch (err) {
+            console.error(err);
+            alert("No se pudo revocar la API key.");
+          }
+        }
+      });
+
+      // -------------------------
+      // Crear
+      // -------------------------
+      createForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const server = (serverSelect?.value || "").trim();
+        const name = (document.getElementById("nameInput")?.value || "").trim();
+
+        if (!server) return alert("Selecciona un servidor.");
+        if (!name) return alert("Escribe un nombre para la API key.");
+
+        if (createStatus) createStatus.textContent = "Creando…";
+        plainKeyBox?.classList.add("hidden");
+
+        try {
+          const res = await fetch(`${API_BASE}/api-keys`, {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({ server, name }),
+          });
+
+          if (await handleAuthErrors(res)) return;
+          if (!res.ok) throw new Error(await res.text());
+
+          const data = await res.json();
+          if (plainKeyOutput) plainKeyOutput.value = data.api_key || "";
+          plainKeyBox?.classList.remove("hidden");
+          if (createStatus) createStatus.textContent = "Creada.";
+          await loadKeys();
+        } catch (err) {
+          console.error(err);
+          if (createStatus) createStatus.textContent = "Error.";
+          alert("No se pudo crear la API key.");
+        }
+      });
+
+      // -------------------------
+      // Copiar
+      // -------------------------
+      copyKeyBtn?.addEventListener("click", async () => {
+        const v = plainKeyOutput?.value || "";
+        if (!v) return;
+        try {
+          await navigator.clipboard.writeText(v);
+          alert("API Key copiada");
+        } catch {
+          alert("No se pudo copiar. Cópiala manualmente.");
+        }
+      });
+
+      // -------------------------
+      // Filtro de servidores (HeaderBar)
+      // -------------------------
+      function applyHeaderFilter(filters, reload = true) {
+        const next = filters?.server ? String(filters.server) : "all";
+        currentServerFilter = next || "all";
+
+        if (filterLabel) {
+          filterLabel.textContent = currentServerFilter === "all" ? "Todos" : currentServerFilter;
+        }
+
+        if (reload) loadKeys();
+      }
+
+      window.addEventListener("sentinelx:filters-changed", (ev) => {
+        const ce = /** @type {CustomEvent} */ (ev);
+        applyHeaderFilter(ce.detail, true);
+      });
+
+      const initial = window.SENTINELX_CURRENT_FILTERS || { server: "all" };
+      applyHeaderFilter(initial, false);
+
+      // Inicial
+      await loadServers();
+      await loadKeys();
+    </script>
+  </section>
+</DashboardLayout>

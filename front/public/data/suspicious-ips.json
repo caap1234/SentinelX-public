@@ -1,0 +1,137 @@
+[
+  {
+    "ip": "203.0.113.45",
+    "countryCode": "JP",
+    "countryName": "Japón",
+    "eventsCount": 800,
+    "mainEvent": "DoS – 800 requests en 60s",
+    "severityLabel": "Alta",
+    "level": "high",
+    "server": "svgs289",
+    "lastSeen": "2025-11-21 19:30"
+  },
+  {
+    "ip": "181.57.33.50",
+    "countryCode": "CO",
+    "countryName": "Colombia",
+    "eventsCount": 350,
+    "mainEvent": "Peticiones masivas a xmlrpc.php",
+    "severityLabel": "Baja",
+    "level": "low",
+    "server": "svgs147",
+    "lastSeen": "2025-11-23 22:41"
+  },
+  {
+    "ip": "45.200.10.55",
+    "countryCode": "US",
+    "countryName": "Estados Unidos",
+    "eventsCount": 193,
+    "mainEvent": "Bot WordPress – ataques a /wp-login.php",
+    "severityLabel": "Alta",
+    "level": "high",
+    "server": "svgr263",
+    "lastSeen": "2025-11-24 07:01"
+  },
+  {
+    "ip": "185.11.22.99",
+    "countryCode": "DE",
+    "countryName": "Alemania",
+    "eventsCount": 63,
+    "mainEvent": "Bloqueos repetidos por CSF/LFD",
+    "severityLabel": "Alta",
+    "level": "high",
+    "server": "svgt272",
+    "lastSeen": "2025-11-22 18:12"
+  },
+  {
+    "ip": "189.220.32.10",
+    "countryCode": "MX",
+    "countryName": "México",
+    "eventsCount": 57,
+    "mainEvent": "Fuerza bruta SSH",
+    "severityLabel": "Alta",
+    "level": "high",
+    "server": "svgs147",
+    "lastSeen": "2025-11-24 10:22"
+  },
+  {
+    "ip": "102.88.83.90",
+    "countryCode": "ZA",
+    "countryName": "Sudáfrica",
+    "eventsCount": 41,
+    "mainEvent": "Múltiples 404 sospechosos (scan de rutas)",
+    "severityLabel": "Media",
+    "level": "medium",
+    "server": "svgs289",
+    "lastSeen": "2025-11-22 02:10"
+  },
+  {
+    "ip": "77.91.121.48",
+    "countryCode": "RU",
+    "countryName": "Rusia",
+    "eventsCount": 120,
+    "mainEvent": "Portscan web – 23 puertos en <10s",
+    "severityLabel": "Media",
+    "level": "medium",
+    "server": "svdm050",
+    "lastSeen": "2025-11-20 03:44"
+  },
+  {
+    "ip": "168.90.45.120",
+    "countryCode": "BR",
+    "countryName": "Brasil",
+    "eventsCount": 34,
+    "mainEvent": "Intentos de SQLi detectados por ModSecurity",
+    "severityLabel": "Alta",
+    "level": "high",
+    "server": "svgs289",
+    "lastSeen": "2025-11-24 09:50"
+  },
+  {
+    "ip": "54.240.9.20",
+    "countryCode": "IE",
+    "countryName": "Irlanda",
+    "eventsCount": 18,
+    "mainEvent": "AUTH FAILED SMTP repetidos",
+    "severityLabel": "Media",
+    "level": "medium",
+    "server": "svgs218",
+    "lastSeen": "2025-11-23 16:12"
+  },
+  {
+    "ip": "106.12.221.188",
+    "countryCode": "CN",
+    "countryName": "China",
+    "eventsCount": 72,
+    "mainEvent": "Bloqueos por intentos de acceso a .env",
+    "severityLabel": "Alta",
+    "level": "high",
+    "server": "svgs218",
+    "lastSeen": "2025-11-23 21:03"
+  },
+  {
+    "ip": "106.12.221.188",
+    "countryCode": "CN",
+    "countryName": "China",
+    "eventsCount": 72,
+    "mainEvent": "Bloqueos por intentos de acceso a .env",
+    "severityLabel": "Alta",
+    "level": "high",
+    "server": "svgs289",
+    "lastSeen": "2025-11-23 21:03"
+  },
+  {
+  "ip": "203.0.113.45",
+  "countryCode": "JP",
+  "countryName": "Japón",
+  "eventsCount": 800,
+  "mainEvent": "DoS – 800 requests en 60s",
+  "severityLabel": "Alta",
+  "level": "high",
+  "server": "svgs289",
+  "lastSeen": "2025-11-21 19:30",
+  "riskScore": 92,
+  "pendingReview": true,
+  "serversCount": 3
+}
+]

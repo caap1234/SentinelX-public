@@ -1,0 +1,1402 @@
+[
+  {
+    "name": "AUTH-001 | SSH brute force detected (por IP)",
+    "description": "Muchos fallos de autenticación SSH desde la misma IP en una ventana corta.",
+    "enabled": true,
+    "source": "SSH_SECURE",
+    "event_type": "auth_login",
+    "severity": 3,
+    "window_seconds": 900,
+    "cooldown_seconds": 900,
+    "version": 1,
+    "group_by": ["server", "ip_client"],
+    "tags": ["auth", "ssh", "bruteforce", "AUTH-001"],
+    "match": {
+      "extra.action": "fail",
+      "extra.protocol": "ssh",
+      "ip_client": { "exists": true }
+    },
+    "condition": "fail_count >= 10",
+    "evidence": { "last_n": 10, "include_raw": true },
+    "emit": { "code": "AUTH-001" },
+    "let": {}
+  },
+
+  {
+    "name": "AUTH-002 | Multiple users from same IP (SSH)",
+    "description": "Posible credential stuffing: muchos usuarios distintos probados desde la misma IP en SSH.",
+    "enabled": true,
+    "source": "SSH_SECURE",
+    "event_type": "auth_login",
+    "severity": 5,
+    "window_seconds": 900,
+    "cooldown_seconds": 900,
+    "version": 1,
+    "group_by": ["server", "ip_client"],
+    "tags": ["auth", "ssh", "credential_stuffing", "AUTH-002"],
+    "match": {
+      "extra.action": "fail",
+      "extra.protocol": "ssh",
+      "ip_client": { "exists": true },
+      "username": { "exists": true }
+    },
+    "condition": "fail_count >= 12 and unique_users >= 5",
+    "evidence": { "last_n": 12, "include_raw": true },
+    "emit": { "code": "AUTH-002" },
+    "let": {}
+  },
+  {
+    "name": "AUTH-002 | Multiple users from same IP (Dovecot)",
+    "description": "Posible credential stuffing: muchos usuarios distintos probados desde la misma IP en IMAP/POP3 (Dovecot).",
+    "enabled": true,
+    "source": "MAILLOG_DOVECOT",
+    "event_type": "auth_login",
+    "severity": 5,
+    "window_seconds": 900,
+    "cooldown_seconds": 900,
+    "version": 1,
+    "group_by": ["server", "ip_client"],
+    "tags": ["auth", "dovecot", "imap", "pop3", "credential_stuffing", "AUTH-002"],
+    "match": {
+      "extra.action": "fail",
+      "extra.protocol": "imap_pop3",
+      "ip_client": { "exists": true },
+      "username": { "exists": true }
+    },
+    "condition": "fail_count >= 12 and unique_users >= 5",
+    "evidence": { "last_n": 12, "include_raw": true },
+    "emit": { "code": "AUTH-002" },
+    "let": {}
+  },
+
+  {
+    "name": "AUTH-003 | Failed authentication then success (SSH, por usuario)",
+    "description": "Credencial válida tras varios intentos fallidos en SSH (posible fuerza bruta exitosa).",
+    "enabled": true,
+    "source": "SSH_SECURE",
+    "event_type": "auth_login",
+    "severity": 15,
+    "window_seconds": 1800,
+    "cooldown_seconds": 3600,
+    "version": 1,
+    "group_by": ["server", "username"],
+    "tags": ["auth", "ssh", "post_bruteforce_success", "AUTH-003"],
+    "match": {
+      "extra.protocol": "ssh",
+      "ip_client": { "exists": true },
+      "username": { "exists": true }
+    },
+    "condition": "success_count >= 1 and fail_count >= 6",
+    "evidence": { "last_n": 15, "include_raw": true },
+    "emit": { "code": "AUTH-003" },
+    "let": {}
+  },
+  {
+    "name": "AUTH-003 | Failed authentication then success (Dovecot, por usuario)",
+    "description": "Credencial válida tras varios intentos fallidos en IMAP/POP3 (Dovecot).",
+    "enabled": true,
+    "source": "MAILLOG_DOVECOT",
+    "event_type": "auth_login",
+    "severity": 15,
+    "window_seconds": 1800,
+    "cooldown_seconds": 3600,
+    "version": 1,
+    "group_by": ["server", "username"],
+    "tags": ["auth", "dovecot", "imap", "pop3", "post_bruteforce_success", "AUTH-003"],
+    "match": {
+      "extra.protocol": "imap_pop3",
+      "ip_client": { "exists": true },
+      "username": { "exists": true }
+    },
+    "condition": "success_count >= 1 and fail_count >= 6",
+    "evidence": { "last_n": 15, "include_raw": true },
+    "emit": { "code": "AUTH-003", "trusted_countries_extra": ["US"] },
+    "let": {}
+  },
+
+  {
+    "name": "AUTH-004 | User attacked from multiple IPs (SSH, por usuario)",
+    "description": "Ataque distribuido: múltiples IPs intentando autenticarse contra el mismo usuario en SSH.",
+    "enabled": true,
+    "source": "SSH_SECURE",
+    "event_type": "auth_login",
+    "severity": 4,
+    "window_seconds": 1800,
+    "cooldown_seconds": 1800,
+    "version": 1,
+    "group_by": ["server", "username"],
+    "tags": ["auth", "ssh", "distributed_attack", "AUTH-004"],
+    "match": {
+      "extra.action": "fail",
+      "extra.protocol": "ssh",
+      "ip_client": { "exists": true },
+      "username": { "exists": true }
+    },
+    "condition": "fail_count >= 12 and unique_ips >= 4",
+    "evidence": { "last_n": 12, "include_raw": true },
+    "emit": { "code": "AUTH-004" },
+    "let": {}
+  },
+  {
+    "name": "AUTH-004 | User attacked from multiple IPs (Dovecot, por usuario)",
+    "description": "Ataque distribuido: múltiples IPs intentando autenticarse contra el mismo usuario en IMAP/POP3 (Dovecot).",
+    "enabled": true,
+    "source": "MAILLOG_DOVECOT",
+    "event_type": "auth_login",
+    "severity": 4,
+    "window_seconds": 1800,
+    "cooldown_seconds": 1800,
+    "version": 1,
+    "group_by": ["server", "username"],
+    "tags": ["auth", "dovecot", "imap", "pop3", "distributed_attack", "AUTH-004"],
+    "match": {
+      "extra.action": "fail",
+      "extra.protocol": "imap_pop3",
+      "ip_client": { "exists": true },
+      "username": { "exists": true }
+    },
+    "condition": "fail_count >= 12 and unique_ips >= 4",
+    "evidence": { "last_n": 12, "include_raw": true },
+    "emit": { "code": "AUTH-004", "trusted_countries_extra": ["US"] },
+    "let": {}
+  },
+
+  {
+    "name": "AUTH-005 | Login from unexpected country (SSH, por usuario)",
+    "description": "Acceso geográfico anómalo: login exitoso desde un país no confiable. (IPs/países trusted se excluyen por el engine).",
+    "enabled": true,
+    "source": "SSH_SECURE",
+    "event_type": "auth_login",
+    "severity": 10,
+    "window_seconds": 3600,
+    "cooldown_seconds": 21600,
+    "version": 1,
+    "group_by": ["server", "username"],
+    "tags": ["auth", "ssh", "geo", "anomaly", "AUTH-005"],
+    "match": {
+      "extra.action": "success",
+      "extra.protocol": "ssh",
+      "extra.geo.country_code": { "exists": true },
+      "ip_client": { "exists": true },
+      "username": { "exists": true }
+    },
+    "condition": "success_count >= 1",
+    "evidence": { "last_n": 5, "include_raw": true },
+    "emit": { "code": "AUTH-005" },
+    "let": {}
+  },
+  {
+  "name": "AUTH-005 | Login from unexpected country (Dovecot, por usuario)",
+  "description": "Acceso geográfico anómalo: login exitoso desde un país no confiable en IMAP/POP3 (Dovecot). (IPs/países trusted se excluyen por el engine).",
+  "enabled": true,
+  "source": "MAILLOG_DOVECOT",
+  "event_type": "auth_login",
+  "severity": 10,
+  "window_seconds": 3600,
+  "cooldown_seconds": 21600,
+  "version": 1,
+  "group_by": ["server", "username"],
+  "tags": ["auth", "dovecot", "imap", "pop3", "geo", "anomaly", "AUTH-005"],
+  "match": {
+    "extra.action": "success",
+    "extra.protocol": "imap_pop3",
+    "extra.geo.country_code": { "in": ["CN","RU","PK","PH","ID","KP","HK","SG","NL","FR","FI","DK"] },
+    "extra.geo.country_code": { "exists": true },
+    "ip_client": { "exists": true },
+    "username": { "exists": true }
+  },
+  "condition": "success_count >= 1",
+  "evidence": { "last_n": 5, "include_raw": true },
+  "emit": {
+    "code": "AUTH-005",
+    "trusted_countries_extra": ["US"]
+  },
+  "let": {}
+  },
+
+  {
+    "name": "AUTH-006 | Privileged login from new IP (SSH, por usuario)",
+    "description": "Riesgo crítico: usuario privilegiado autenticó exitosamente y se observan múltiples IPs para ese usuario en una ventana amplia (aprox. 'nueva IP'). Requiere lista 'privileged_users' en SIEM_TRUST_CONFIG lists.",
+    "enabled": true,
+    "source": "SSH_SECURE",
+    "event_type": "auth_login",
+    "severity": 25,
+    "window_seconds": 2592000,
+    "cooldown_seconds": 86400,
+    "version": 1,
+    "group_by": ["server", "username"],
+    "tags": ["auth", "ssh", "privileged", "high_risk", "AUTH-006"],
+    "match": {
+      "extra.action": "success",
+      "extra.protocol": "ssh",
+      "username": { "in_ref": "privileged_users" },
+      "ip_client": { "exists": true }
+    },
+    "condition": "success_count >= 1 and unique_ips >= 2",
+    "evidence": { "last_n": 20, "include_raw": true },
+    "emit": { "code": "AUTH-006" },
+    "let": {}
+  },
+
+  {
+    "name": "AUTH-007 | cPanel authentication abuse (por IP)",
+    "description": "Fuerza bruta o abuso de autenticación contra cPanel desde la misma IP (fallos repetidos de login).",
+    "enabled": true,
+    "source": "PANEL_ACCESS",
+    "event_type": "panel_access",
+    "severity": 10,
+    "window_seconds": 900,
+    "cooldown_seconds": 1800,
+    "version": 1,
+    "group_by": ["server", "ip_client"],
+    "tags": ["auth", "cpanel", "bruteforce", "panel", "AUTH-007"],
+    "match": {
+      "extra.panel.area": "panel",
+      "extra.panel.action": "login",
+      "extra.panel.status": "failed",
+      "ip_client": { "exists": true }
+    },
+    "condition": "count >= 20",
+    "evidence": { "last_n": 20, "include_raw": true },
+    "emit": { "code": "AUTH-007" },
+    "let": {}
+  },
+
+  {
+    "name": "WEB-001 | Path scanning detected (por IP)",
+    "description": "Reconocimiento web: muchos paths distintos desde la misma IP en una ventana corta.",
+    "enabled": true,
+    "source": "APACHE_ACCESS",
+    "event_type": "http_access",
+    "severity": 3,
+    "window_seconds": 300,
+    "cooldown_seconds": 600,
+    "version": 1,
+    "group_by": ["server", "ip_client"],
+    "tags": ["web", "recon", "path_scanning", "WEB-001"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.http.path": { "exists": true }
+    },
+    "condition": "count >= 60 and unique_paths >= 25",
+    "evidence": { "last_n": 20, "include_raw": true },
+    "emit": { "code": "WEB-001" },
+    "let": {}
+  },
+
+  {
+    "name": "WEB-002 | XML-RPC anomalous usage detected (por IP)",
+    "description": "Uso anómalo de XML-RPC: hits repetidos a /xmlrpc.php (no estricto).",
+    "enabled": true,
+    "source": "APACHE_ACCESS",
+    "event_type": "http_access",
+    "severity": 4,
+    "window_seconds": 600,
+    "cooldown_seconds": 900,
+    "version": 1,
+    "group_by": ["server", "ip_client"],
+    "tags": ["web", "wordpress", "xmlrpc", "anomaly", "WEB-002"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.http.path": { "contains": "/xmlrpc.php" }
+    },
+    "condition": "count >= 25",
+    "evidence": { "last_n": 15, "include_raw": true },
+    "emit": { "code": "WEB-002" },
+    "let": {}
+  },
+
+  {
+    "name": "WEB-003 | Exploit pattern detected (por IP)",
+    "description": "Patrones comunes de exploit en path/query (LFI/RFI/RCE/Traversal). Usa lists.web_exploit_path_tokens.",
+    "enabled": true,
+    "source": "APACHE_ACCESS",
+    "event_type": "http_access",
+    "severity": 15,
+    "window_seconds": 600,
+    "cooldown_seconds": 1800,
+    "version": 1,
+    "group_by": ["server", "ip_client"],
+    "tags": ["web", "exploit", "attack", "WEB-003"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.http.path": { "contains_any_ref": "web_exploit_path_tokens" }
+    },
+    "condition": "count >= 3",
+    "evidence": { "last_n": 10, "include_raw": true },
+    "emit": { "code": "WEB-003" },
+    "let": {}
+  },
+
+  {
+    "name": "WEB-004 | Access to sensitive files (por IP)",
+    "description": "Acceso a archivos sensibles (/.env, wp-config.php, .git, backups, etc.). Usa lists.sensitive_path_keywords.",
+    "enabled": true,
+    "source": "APACHE_ACCESS",
+    "event_type": "http_access",
+    "severity": 10,
+    "window_seconds": 900,
+    "cooldown_seconds": 1800,
+    "version": 1,
+    "group_by": ["server", "ip_client"],
+    "tags": ["web", "exposure", "sensitive_files", "WEB-004"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.http.path": { "contains_any_ref": "sensitive_path_keywords" }
+    },
+    "condition": "count >= 5",
+    "evidence": { "last_n": 10, "include_raw": true },
+    "emit": { "code": "WEB-004" },
+    "let": {}
+  },
+
+  {
+    "name": "WEB-005 | WP login abuse detected (por IP)",
+    "description": "Fuerza bruta WordPress: abuso de /wp-login.php desde la misma IP.",
+    "enabled": true,
+    "source": "APACHE_ACCESS",
+    "event_type": "http_access",
+    "severity": 6,
+    "window_seconds": 600,
+    "cooldown_seconds": 1200,
+    "version": 1,
+    "group_by": ["server", "ip_client"],
+    "tags": ["web", "wordpress", "wp-login", "bruteforce", "WEB-005"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.http.path": { "contains": "/wp-login.php" }
+    },
+    "condition": "count >= 30",
+    "evidence": { "last_n": 15, "include_raw": true },
+    "emit": { "code": "WEB-005" },
+    "let": {}
+  },
+
+  {
+    "name": "WEB-006 | HTTP flood detected (single IP)",
+    "description": "Flood volumétrico: muchas requests totales desde una IP en poco tiempo.",
+    "enabled": true,
+    "source": "APACHE_ACCESS",
+    "event_type": "http_access",
+    "severity": 6,
+    "window_seconds": 60,
+    "cooldown_seconds": 300,
+    "version": 1,
+    "group_by": ["server", "ip_client"],
+    "tags": ["web", "dos", "http_flood", "WEB-006"],
+    "match": {
+      "ip_client": { "exists": true }
+    },
+    "condition": "count >= 300",
+    "evidence": { "last_n": 20, "include_raw": true },
+    "emit": { "code": "WEB-006" },
+    "let": {}
+  },
+
+  {
+    "name": "WEB-007 | Phishing / scam keyword detected (por vhost)",
+    "description": "Riesgo reputacional: keywords de phishing/scam en path/query. Agrupa por extra.vhost (muy poblado en APACHE_ACCESS). Usa lists.phishing_path_keywords.",
+    "enabled": true,
+    "source": "APACHE_ACCESS",
+    "event_type": "http_access",
+    "severity": 8,
+    "window_seconds": 1800,
+    "cooldown_seconds": 21600,
+    "version": 1,
+    "group_by": ["server", "extra.vhost"],
+    "tags": ["web", "phishing", "reputation", "WEB-007"],
+    "match": {
+      "extra.vhost": { "exists": true },
+      "extra.http.path": { "contains_any_ref": "phishing_path_keywords" }
+    },
+    "condition": "count >= 10 and unique_ips >= 5",
+    "evidence": { "last_n": 15, "include_raw": true },
+    "emit": { "code": "WEB-007" },
+    "let": {}
+  },
+
+  {
+    "name": "WEB-008 | HTTP flood from subnet (/24) on same server",
+    "description": "Detecta flood concentrado por subnet /24 contra un servidor (subnet real derivada de ip_client). Genera alerta por (server + subnet) para que sea accionable.",
+    "enabled": true,
+    "source": "APACHE_ACCESS",
+    "event_type": "http_access",
+    "severity": 10,
+    "window_seconds": 60,
+    "cooldown_seconds": 600,
+    "version": 2,
+    "group_by": ["server", "ip_subnet24"],
+    "tags": ["web", "dos", "subnet24", "flood", "WEB-008"],
+    "match": {
+      "ip_client": { "exists": true },
+      "ip_subnet24": { "exists": true }
+    },
+    "condition": "count >= 900 and unique_ips >= 40",
+    "evidence": { "last_n": 50, "include_raw": true },
+    "emit": { "code": "WEB-008" },
+    "let": {}
+  },
+
+  {
+    "name": "WEB-009 | HTTP flood from country (por país)",
+    "description": "Ataque regional: alto volumen y muchas IPs desde el mismo country_code (geo/geoip). Requiere geo enrichment.",
+    "enabled": true,
+    "source": "APACHE_ACCESS",
+    "event_type": "http_access",
+    "severity": 15,
+    "window_seconds": 300,
+    "cooldown_seconds": 1800,
+    "version": 1,
+    "group_by": ["server", "extra.geo.country_code"],
+    "tags": ["web", "dos", "geo", "country_flood", "WEB-009"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.geo.country_code": { "exists": true }
+    },
+    "condition": "count >= 3000 and unique_ips >= 150",
+    "evidence": { "last_n": 30, "include_raw": true },
+    "emit": { "code": "WEB-009" },
+    "let": {}
+  },
+
+  {
+    "name": "WEB-010 | ModSecurity flood detected (por IP)",
+    "description": "Ataque activo bloqueado: muchos eventos ModSecurity desde la misma IP.",
+    "enabled": true,
+    "source": "MODSEC",
+    "event_type": "waf_block",
+    "severity": 6,
+    "window_seconds": 300,
+    "cooldown_seconds": 900,
+    "version": 1,
+    "group_by": ["server", "domain", "ip_client"],
+    "tags": ["web", "waf", "modsecurity", "blocked", "WEB-010"],
+    "match": {
+      "ip_client": { "exists": true },
+      "domain": { "exists": true },
+      "extra.waf.rule_id": { "exists": true }
+    },
+    "condition": "count >= 40",
+    "evidence": { "last_n": 20, "include_raw": true },
+    "emit": { "code": "WEB-010" },
+    "let": {}
+  },
+
+  {
+    "name": "WEB-011 | Excessive server errors (5xx) (por referer_host)",
+    "description": "Degradación del servicio: muchos eventos de error HTTP desde apache error log. Excluye ruido (extra.noise=true). Agrupa por extra.referer_host cuando existe.",
+    "enabled": true,
+    "source": "APACHE_ERROR",
+    "event_type": "http_error",
+    "severity": 8,
+    "window_seconds": 600,
+    "cooldown_seconds": 1800,
+    "version": 1,
+    "group_by": ["server", "extra.referer_host"],
+    "tags": ["web", "availability", "5xx", "apache_error", "WEB-011"],
+    "match": {
+      "extra.noise": { "eq": false },
+      "extra.kind": { "exists": true }
+    },
+    "condition": "count >= 50",
+    "evidence": { "last_n": 20, "include_raw": true },
+    "emit": { "code": "WEB-011" },
+    "let": {}
+  },
+  {
+  "name": "WEB-012 | HTTP flood from suspicious ASN (per server)",
+  "description": "Detecta flood HTTP hacia un servidor cuando el ASN origen pertenece a lista sospechosa (hosting/scanners).",
+  "enabled": true,
+  "source": "APACHE_ACCESS",
+  "event_type": "http_access",
+  "severity": 12,
+  "window_seconds": 60,
+  "cooldown_seconds": 600,
+  "version": 1,
+  "group_by": ["server", "extra.asn.number"],
+  "tags": ["web", "dos", "asn", "WEB-012"],
+  "match": {
+    "ip_client": { "exists": true },
+    "extra.asn.number": { "in_ref": "suspicious_asn_numbers" }
+  },
+  "condition": "count >= 600 and unique_ips >= 25",
+  "evidence": { "last_n": 30, "include_raw": true },
+  "emit": { "code": "WEB-012" },
+  "let": {}
+  },
+  {
+    "name": "FILE-001 | PHP file uploaded (rutas de riesgo) (por host/user/ip)",
+    "description": "Posible webshell: subida de archivos vía cPanel File Manager a rutas típicas de webshell (uploads/cache/tmp/cgi-bin). Excluye IPs trusted por el engine (requiere ip_client).",
+    "enabled": true,
+    "source": "PANEL_ACCESS",
+    "event_type": "file_action",
+    "severity": 20,
+    "window_seconds": 1800,
+    "cooldown_seconds": 21600,
+    "group_by": ["server", "username", "ip_client", "extra.file.dir"],
+    "tags": ["files", "upload", "cpanel", "filemanager", "webshell", "FILE-001"],
+    "match": {
+      "ip_client": { "exists": true },
+      "username": { "exists": true },
+      "extra.panel.area": { "eq": "filemanager" },
+      "extra.panel.action": { "eq": "file_action" },
+      "extra.panel.status": { "eq": "ok" },
+      "extra.file.action": { "eq": "upload_files" },
+      "extra.file.dir": {
+        "exists": true,
+        "contains_any": [
+          "/wp-content/uploads",
+          "/uploads",
+          "/cache",
+          "/tmp",
+          "/cgi-bin",
+          "/.well-known",
+          "/wp-content/plugins",
+          "/wp-content/themes"
+        ]
+      }
+    },
+    "condition": "count >= 2",
+    "evidence": { "last_n": 10, "include_raw": true },
+    "emit": { "code": "FILE-001" },
+    "let": {}
+  },
+
+  {
+    "name": "FILE-002 | WordPress core integrity violation (por server+signature)",
+    "description": "Posible alteración/falta de core WP: errores de missing_file que apuntan a wp-admin/wp-includes/wp-*.php o class-wp*.php. Agrupa por signature (WP_ERROR) para reducir ruido.",
+    "enabled": true,
+    "source": "WP_ERROR",
+    "event_type": "app_error",
+    "severity": 20,
+    "window_seconds": 1800,
+    "cooldown_seconds": 21600,
+    "group_by": ["server", "extra.signature"],
+    "tags": ["files", "wordpress", "integrity", "core", "FILE-002"],
+    "match": {
+      "extra.app": { "eq": "wordpress" },
+      "extra.wp.kind": { "eq": "missing_file" },
+      "extra.signature": {
+        "exists": true,
+        "contains_any": [
+          "wp-admin",
+          "wp-includes",
+          "wp-",
+          "class-wp"
+        ]
+      }
+    },
+    "condition": "count >= 5",
+    "evidence": { "last_n": 10, "include_raw": true },
+    "emit": { "code": "FILE-002" },
+    "let": {}
+  },
+
+  {
+    "name": "FILE-002 | WordPress core integrity violation (apache_error embedded WP)",
+    "description": "Variante cuando WP viene embebido en APACHE_ERROR (puede traer IP). Busca missing_file y señales de core WP en message.",
+    "enabled": true,
+    "source": "APACHE_ERROR",
+    "event_type": "app_error",
+    "severity": 20,
+    "window_seconds": 1800,
+    "cooldown_seconds": 21600,
+    "group_by": ["server"],
+    "tags": ["files", "wordpress", "integrity", "core", "FILE-002"],
+    "match": {
+      "extra.app": { "eq": "wordpress" },
+      "extra.wp.kind": { "eq": "missing_file" },
+      "message": {
+        "contains_any": [
+          "wp-admin",
+          "wp-includes",
+          "wp-",
+          "class-wp"
+        ]
+      }
+    },
+    "condition": "count >= 5",
+    "evidence": { "last_n": 10, "include_raw": true },
+    "emit": { "code": "FILE-002" },
+    "let": {}
+  },
+
+  {
+    "name": "FILE-003 | File obfuscation detected (apache_error patterns) (por referer_host)",
+    "description": "Backdoor ofuscado: señales típicas en errores PHP/Apache (eval/base64/gzinflate/str_rot13/assert/preg_replace) y ejecución de comandos. Evita ruido autoindex (noise=true).",
+    "enabled": true,
+    "source": "APACHE_ERROR",
+    "event_type": "http_error",
+    "severity": 25,
+    "window_seconds": 1800,
+    "cooldown_seconds": 28800,
+    "group_by": ["server", "extra.referer_host"],
+    "tags": ["files", "obfuscation", "backdoor", "php", "FILE-003"],
+    "match": {
+      "message": {
+        "contains_any": [
+          "eval(",
+          "base64_decode",
+          "gzinflate(",
+          "str_rot13(",
+          "assert(",
+          "preg_replace",
+          "create_function",
+          "shell_exec(",
+          "system(",
+          "passthru(",
+          "exec(",
+          "curl ",
+          "wget ",
+          "chmod +x"
+        ]
+      }
+    },
+    "condition": "count >= 3",
+    "evidence": { "last_n": 10, "include_raw": true },
+    "emit": { "code": "FILE-003" },
+    "let": {}
+  },
+
+  {
+    "name": "FILE-003 | Suspicious File Manager burst (ok) (por user+ip)",
+    "description": "Heurística: ráfaga de acciones en File Manager (list/upload/fileop) desde IP no-trusted. Útil como señal secundaria de backdoor/edición masiva.",
+    "enabled": true,
+    "source": "PANEL_ACCESS",
+    "event_type": "file_action",
+    "severity": 25,
+    "window_seconds": 900,
+    "cooldown_seconds": 21600,
+    "group_by": ["server", "username", "ip_client"],
+    "tags": ["files", "filemanager", "heuristic", "burst", "FILE-003"],
+    "match": {
+      "ip_client": { "exists": true },
+      "username": { "exists": true },
+      "extra.panel.area": { "eq": "filemanager" },
+      "extra.panel.action": { "eq": "file_action" },
+      "extra.panel.status": { "eq": "ok" },
+      "extra.file.action": { "in": ["upload_files", "list_files", "fileop"] }
+    },
+    "condition": "count >= 40",
+    "evidence": { "last_n": 15, "include_raw": true },
+    "emit": { "code": "FILE-003" },
+    "let": {}
+  },
+
+  {
+    "name": "FILE-004 | Executable file in /tmp (syslog heuristic) (por server)",
+    "description": "Señal de ejecución remota/abuso: logs de SYSTEM que indiquen ejecución/descarga y rutas /tmp (curl|wget|bash|python|perl|chmod). Requiere que el parser SYSTEM ponga message con esos tokens.",
+    "enabled": true,
+    "source": "SYSTEM",
+    "event_type": "system_log",
+    "severity": 30,
+    "window_seconds": 900,
+    "cooldown_seconds": 28800,
+    "group_by": ["server"],
+    "tags": ["files", "tmp", "execution", "rce", "FILE-004"],
+    "match": {
+      "message": {
+        "contains_any": [
+          "/tmp/",
+          "curl ",
+          "wget ",
+          "bash -c",
+          "sh -c",
+          "python",
+          "perl",
+          "php ",
+          "chmod +x",
+          "execve",
+          "CRON"
+        ]
+      }
+    },
+    "condition": "count >= 5",
+    "evidence": { "last_n": 10, "include_raw": true },
+    "emit": { "code": "FILE-004" },
+    "let": {}
+  },
+  {
+    "name": "MAIL-001 | Mail authentication failures (por IP)",
+    "description": "Muchos fallos de autenticación de correo desde la misma IP (IMAP/POP3 Dovecot + SMTP AUTH fail Exim). Excluye IPs trusted por el engine.",
+    "enabled": true,
+    "source": "MAILLOG_DOVECOT",
+    "event_type": "auth_login",
+    "severity": 4,
+    "window_seconds": 900,
+    "cooldown_seconds": 900,
+    "version": 1,
+    "group_by": ["server", "ip_client"],
+    "tags": ["mail", "auth", "imap", "pop3", "bruteforce", "MAIL-001"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.protocol": { "eq": "imap_pop3" },
+      "extra.action": { "eq": "fail" }
+    },
+    "condition": "fail_count >= 12",
+    "evidence": { "last_n": 12, "include_raw": true },
+    "emit": { "code": "MAIL-001" },
+    "let": {}
+  },
+  {
+    "name": "MAIL-001 | Mail authentication failures (SMTP AUTH fail) (por IP)",
+    "description": "Muchos fallos de autenticación SMTP (submission) desde la misma IP. Excluye IPs trusted por el engine.",
+    "enabled": true,
+    "source": "EXIM_MAINLOG",
+    "event_type": "auth_login",
+    "severity": 4,
+    "window_seconds": 900,
+    "cooldown_seconds": 900,
+    "version": 1,
+    "group_by": ["server", "ip_client"],
+    "tags": ["mail", "auth", "smtp", "bruteforce", "MAIL-001"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.protocol": { "eq": "smtp" },
+      "extra.action": { "eq": "fail" },
+      "extra.direction": { "eq": "outbound" }
+    },
+    "condition": "fail_count >= 10",
+    "evidence": { "last_n": 10, "include_raw": true },
+    "emit": { "code": "MAIL-001" },
+    "let": {}
+  },
+
+  {
+    "name": "MAIL-002 | Mail auth failures then success (por user)",
+    "description": "Se observan varios fallos seguidos y luego un éxito para el mismo usuario (posible cuenta comprometida / password spray que acertó). Excluye IPs trusted por el engine.",
+    "enabled": true,
+    "source": "MAILLOG_DOVECOT",
+    "event_type": "auth_login",
+    "severity": 15,
+    "window_seconds": 1800,
+    "cooldown_seconds": 21600,
+    "version": 1,
+    "group_by": ["server", "username"],
+    "tags": ["mail", "auth", "imap", "pop3", "compromise", "MAIL-002"],
+    "match": {
+      "username": { "exists": true },
+      "ip_client": { "exists": true },
+      "extra.protocol": { "eq": "imap_pop3" }
+    },
+    "condition": "fail_count >= 8 and success_count >= 1",
+    "evidence": { "last_n": 20, "include_raw": true },
+    "emit": { "code": "MAIL-002" },
+    "let": {}
+  },
+  {
+    "name": "MAIL-002 | Mail auth failures then success (SMTP submission) (por user)",
+    "description": "Fallos y luego éxito en SMTP AUTH (submission) para el mismo usuario en ventana corta. Excluye IPs trusted por el engine.",
+    "enabled": true,
+    "source": "EXIM_MAINLOG",
+    "event_type": "auth_login",
+    "severity": 15,
+    "window_seconds": 1800,
+    "cooldown_seconds": 21600,
+    "version": 1,
+    "group_by": ["server", "username"],
+    "tags": ["mail", "auth", "smtp", "compromise", "MAIL-002"],
+    "match": {
+      "username": { "exists": true },
+      "ip_client": { "exists": true },
+      "extra.protocol": { "eq": "smtp" },
+      "extra.direction": { "eq": "outbound" }
+    },
+    "condition": "fail_count >= 6 and success_count >= 1",
+    "evidence": { "last_n": 20, "include_raw": true },
+    "emit": { "code": "MAIL-002", "trusted_countries_extra": ["US"] },
+    "let": {}
+  },
+
+  {
+    "name": "MAIL-003 | High outbound mail volume (por host/domain)",
+    "description": "Volumen alto de flujo outbound (EXIM mail_flow outbound) en ventana corta, por dominio/host. Señal de spam o malware. Nota: no es AUTH; se basa en mail_flow.",
+    "enabled": true,
+    "source": "EXIM_MAINLOG",
+    "event_type": "mail_flow",
+    "severity": 20,
+    "window_seconds": 900,
+    "cooldown_seconds": 7200,
+    "version": 1,
+    "group_by": ["server", "domain"],
+    "tags": ["mail", "outbound", "spam", "volume", "MAIL-003"],
+    "match": {
+      "extra.direction": { "eq": "outbound" },
+      "domain": { "exists": true }
+    },
+    "condition": "count >= 300",
+    "evidence": { "last_n": 15, "include_raw": true },
+    "emit": { "code": "MAIL-003" },
+    "let": {}
+  },
+  {
+    "name": "MAIL-003 | High outbound mail volume (por host v2) (sin domain)",
+    "description": "Fallback cuando domain no viene (logs sin addr parseable). Agrupa por server para detectar flood global del host.",
+    "enabled": true,
+    "source": "EXIM_MAINLOG",
+    "event_type": "mail_flow",
+    "severity": 20,
+    "window_seconds": 900,
+    "cooldown_seconds": 7200,
+    "version": 1,
+    "group_by": ["server"],
+    "tags": ["mail", "outbound", "spam", "volume", "MAIL-003"],
+    "match": {
+      "extra.direction": { "eq": "outbound" }
+    },
+    "condition": "count >= 800",
+    "evidence": { "last_n": 15, "include_raw": true },
+    "emit": { "code": "MAIL-003" },
+    "let": {}
+  },
+
+  {
+    "name": "MAIL-004 | Mail login from risky country (por IP)",
+    "description": "Intentos de login IMAP/POP3 desde países no esperados. La exclusión de trusted_countries la hace el engine; aquí solo detectamos países 'risky' (tunable).",
+    "enabled": true,
+    "source": "MAILLOG_DOVECOT",
+    "event_type": "auth_login",
+    "severity": 10,
+    "window_seconds": 3600,
+    "cooldown_seconds": 21600,
+    "version": 1,
+    "group_by": ["server", "ip_client", "geo_country"],
+    "tags": ["mail", "auth", "geo", "risk", "dovecot", "MAIL-004"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.protocol": { "eq": "imap_pop3" },
+      "geo_country": { "in": ["RU", "CN", "IR", "KP", "VN", "IN", "BR", "NG", "TR"] }
+    },
+    "condition": "fail_count >= 3 or success_count >= 1",
+    "evidence": { "last_n": 10, "include_raw": true },
+    "emit": { "code": "MAIL-004" },
+    "let": {}
+  },
+
+  {
+    "name": "MAIL-005 | Outbound rate-limit exceeded (por domain)",
+    "description": "Detecta cuando Exim aplica enforce_mail_permissions y descarta envíos por límite (ej. 35/35 o máximo por hora).",
+    "enabled": true,
+    "source": "EXIM_MAINLOG",
+    "event_type": "mail_flow",
+    "severity": 12,
+    "window_seconds": 900,
+    "cooldown_seconds": 1800,
+    "version": 1,
+    "group_by": ["server", "domain"],
+    "tags": ["mail", "smtp", "rate_limit", "policy", "discarded", "MAIL-005"],
+    "match": {
+      "extra.direction": { "eq": "outbound" },
+      "extra.kind": { "eq": "rate_limit" },
+      "domain": { "exists": true }
+    },
+    "condition": "count >= 3",
+    "evidence": { "last_n": 10, "include_raw": true },
+    "emit": { "code": "MAIL-005" },
+    "let": {}
+  },
+
+  {
+    "name": "MAIL-005 | Outbound rate-limit exceeded (por host) (fallback sin domain)",
+    "description": "Fallback si domain viene vacío; detecta rate-limit a nivel host (posible saturación o abuso general).",
+    "enabled": true,
+    "source": "EXIM_MAINLOG",
+    "event_type": "mail_flow",
+    "severity": 12,
+    "window_seconds": 900,
+    "cooldown_seconds": 1800,
+    "version": 1,
+    "group_by": ["server"],
+    "tags": ["mail", "smtp", "rate_limit", "policy", "discarded", "MAIL-005"],
+    "match": {
+      "extra.direction": { "eq": "outbound" },
+      "extra.kind": { "eq": "rate_limit" }
+    },
+    "condition": "count >= 10",
+    "evidence": { "last_n": 15, "include_raw": true },
+    "emit": { "code": "MAIL-005" },
+    "let": {}
+  },
+
+  {
+    "name": "MAIL-006 | Sustained rate-limit pressure (por domain)",
+    "description": "Presión sostenida de límites: muchos descartes por rate-limit en ventana más amplia (señal fuerte de abuso o mala configuración).",
+    "enabled": true,
+    "source": "EXIM_MAINLOG",
+    "event_type": "mail_flow",
+    "severity": 20,
+    "window_seconds": 3600,
+    "cooldown_seconds": 21600,
+    "version": 1,
+    "group_by": ["server", "domain"],
+    "tags": ["mail", "smtp", "rate_limit", "hourly_limit", "abuse", "MAIL-006"],
+    "match": {
+      "extra.direction": { "eq": "outbound" },
+      "extra.kind": { "eq": "rate_limit" },
+      "domain": { "exists": true }
+    },
+    "condition": "count >= 15",
+    "evidence": { "last_n": 25, "include_raw": true },
+    "emit": { "code": "MAIL-006" },
+    "let": {}
+  },
+
+  {
+    "name": "MAIL-007 | Rate-limit exceeded with 'max per hour' indicator (por domain)",
+    "description": "Variante estricta: detecta específicamente texto tipo 'maximum hourly emails' o 'per hour' en el detalle del enforce.",
+    "enabled": true,
+    "source": "EXIM_MAINLOG",
+    "event_type": "mail_flow",
+    "severity": 18,
+    "window_seconds": 1800,
+    "cooldown_seconds": 21600,
+    "version": 1,
+    "group_by": ["server", "domain"],
+    "tags": ["mail", "smtp", "rate_limit", "hourly", "policy", "MAIL-007"],
+    "match": {
+      "extra.direction": { "eq": "outbound" },
+      "extra.kind": { "eq": "rate_limit" },
+      "extra.detail": { "contains_any": ["per hour", "hourly", "max", "maximum", "35/35"] },
+      "domain": { "exists": true }
+    },
+    "condition": "count >= 3",
+    "evidence": { "last_n": 12, "include_raw": true },
+    "emit": { "code": "MAIL-007" },
+    "let": {}
+  },
+
+  {
+    "name": "SYS-001 | SSH login from non-trusted country (por usuario)",
+    "description": "Login SSH exitoso por usuario desde un país fuera de trusted_countries. Respeta trust (no alerta en MX ni trusted_ips).",
+    "enabled": true,
+    "source": "SSH_SECURE",
+    "event_type": "auth_login",
+    "severity": 10,
+    "window_seconds": 86400,
+    "cooldown_seconds": 21600,
+    "version": 1,
+    "group_by": ["server", "username"],
+    "tags": ["system", "ssh", "geo", "anomaly", "SYS-001"],
+    "match": {
+      "extra.action": "success",
+      "extra.protocol": "ssh",
+      "username": { "exists": true },
+      "extra.geo.country_code": { "exists": true }
+    },
+    "condition": "count >= 1",
+    "evidence": { "last_n": 5, "include_raw": true },
+    "emit": { "code": "SYS-001" },
+    "let": {}
+  },
+
+  {
+    "name": "SYS-002 | Privilege escalation detected (sudo/su/pkexec/polkit)",
+    "description": "Señales repetidas de escalación de privilegios en syslog. Respeta trust; útil para detectar actividad sospechosa en host.",
+    "enabled": true,
+    "source": "SYSTEM",
+    "event_type": "system_log",
+    "severity": 30,
+    "window_seconds": 900,
+    "cooldown_seconds": 1800,
+    "version": 1,
+    "group_by": ["server"],
+    "tags": ["system", "privilege", "sudo", "su", "polkit", "SYS-002"],
+    "match": {
+      "extra.event_type": "system_log",
+      "extra.noise": { "eq": false },
+      "message": {
+        "contains_any": [
+          "sudo:",
+          "sudo[",
+          "su:",
+          "su[",
+          "pkexec",
+          "polkit",
+          "authentication failure",
+          "pam_unix(sudo",
+          "pam_unix(su"
+        ]
+      }
+    },
+    "condition": "count >= 3",
+    "evidence": { "last_n": 15, "include_raw": true },
+    "emit": { "code": "SYS-002" },
+    "let": {}
+  },
+
+  {
+    "name": "SYS-003 | Suspicious cron modification / persistence hints",
+    "description": "Detecta señales repetidas relacionadas con cron/systemd timers (posible persistencia). Respeta trust.",
+    "enabled": true,
+    "source": "SYSTEM",
+    "event_type": "system_log",
+    "severity": 20,
+    "window_seconds": 1800,
+    "cooldown_seconds": 3600,
+    "version": 1,
+    "group_by": ["server"],
+    "tags": ["system", "cron", "persistence", "timer", "SYS-003"],
+    "match": {
+      "extra.event_type": "system_log",
+      "extra.noise": { "eq": false },
+      "message": {
+        "contains_any": [
+          "CRON[",
+          "crontab",
+          "/etc/cron",
+          "/etc/cron.d",
+          "/etc/cron.daily",
+          "/var/spool/cron",
+          "anacron",
+          "systemd",
+          ".timer",
+          "Started Session",
+          "Created slice"
+        ]
+      }
+    },
+    "condition": "count >= 5",
+    "evidence": { "last_n": 20, "include_raw": true },
+    "emit": { "code": "SYS-003" },
+    "let": {}
+  },
+
+  {
+  "name": "RES-001 | Sustained high CPU / load (sar -q)",
+  "description": "Detecta carga alta sostenida usando sar -q. Dispara solo si load >= 6 (y opcional ld5>=6) con suficientes muestras. Respeta trust (no ignore_trust).",
+  "enabled": true,
+  "source": "SAR_STATS",
+  "event_type": "metric",
+  "severity": 5,
+  "window_seconds": 900,
+  "cooldown_seconds": 1800,
+  "version": 1,
+  "group_by": ["server"],
+  "tags": ["resources", "cpu", "load", "sar", "RES-001"],
+  "match": {
+    "extra.event_type": "metric",
+    "extra.metric.family": "sar",
+    "extra.metric.name": "load"
+  },
+  "condition": "(count >= 5) and (ld1 >= 6) and (ld5 >= 6)",
+  "evidence": { "last_n": 20, "include_raw": true },
+  "emit": { "code": "RES-001" },
+  "let": {
+    "ld1": "extra.metric.ldavg_1",
+    "ld5": "extra.metric.ldavg_5",
+    "runq": "extra.metric.runq_sz",
+    "blocked": "extra.metric.blocked"
+  }
+  },
+
+  {
+    "name": "RES-002 | Excessive PHP processes / saturation hints (sar + messages)",
+    "description": "Señal de saturación relacionada a PHP: carga alta (sar -q) + indicadores de procesos/errores en SYSTEM (messages).",
+    "enabled": false,
+    "source": "SAR_STATS",
+    "event_type": "metric",
+    "severity": 10,
+    "window_seconds": 900,
+    "cooldown_seconds": 1800,
+    "version": 2,
+    "group_by": ["server"],
+    "tags": ["resources", "php", "saturation", "sar", "messages", "RES-002"],
+    "match": {
+      "extra.event_type": "metric",
+      "extra.metric.family": "sar",
+      "extra.metric.name": "load"
+    },
+    "condition": "(count >= 5) and ((ld1pc >= 2.0) or (runq >= 12) or (blocked >= 4))",
+    "evidence": { "last_n": 30, "include_raw": true },
+    "emit": {
+      "code": "RES-002",
+      "notes": "Correlacionar con SYSTEM/message para php-fpm/httpd OOM/MaxChildren/segfault si se desea."
+    },
+    "let": {
+      "ld1pc": "extra.metric.ldavg_1_per_cpu",
+      "runq": "extra.metric.runq_sz",
+      "blocked": "extra.metric.blocked"
+    }
+  },
+
+  {
+    "name": "RES-003 | Sustained high RAM usage (sar -r)",
+    "description": "Detecta uso alto sostenido de RAM con sar -r (mem_used_pct). Respeta trust (no ignore_trust).",
+    "enabled": true,
+    "source": "SAR_STATS",
+    "event_type": "metric",
+    "severity": 10,
+    "window_seconds": 900,
+    "cooldown_seconds": 1800,
+    "version": 1,
+    "group_by": ["server"],
+    "tags": ["resources", "ram", "memory", "sar", "RES-003"],
+    "match": {
+      "extra.event_type": "metric",
+      "extra.metric.family": "sar",
+      "extra.metric.name": "memory"
+    },
+    "condition": "(count >= 5) and (mem_pct >= 92)",
+    "evidence": { "last_n": 20, "include_raw": true },
+    "emit": { "code": "RES-003" },
+    "let": {
+      "mem_pct": "extra.metric.mem_used_pct"
+    }
+  },
+
+  {
+    "name": "MULTI-001 | Same IP attacking multiple hosts (cross-server)",
+    "description": "Misma IP aparece en eventos de varios servidores dentro de la ventana. Útil para ver campañas coordinadas (HTTP/SSH/LFD).",
+    "enabled": true,
+    "source": "APACHE_ACCESS",
+    "event_type": "http_access",
+    "severity": 12,
+    "window_seconds": 600,
+    "cooldown_seconds": 1800,
+    "version": 2,
+    "group_by": ["ip_client"],
+    "tags": ["global", "multi_host", "coordinated", "MULTI-001"],
+    "match": {
+      "ip_client": { "exists": true }
+    },
+    "condition": "count >= 200 and unique_servers >= 2",
+    "evidence": { "last_n": 30, "include_raw": true },
+    "emit": { "code": "MULTI-001" },
+    "let": {}
+  },
+
+  {
+    "name": "MULTI-002 | Auth fail in one host then success in another (credential reuse)",
+    "description": "Detecta posible reuso de credenciales: el mismo usuario falla en un servidor y luego logra éxito en otro dentro de una ventana.",
+    "enabled": true,
+    "source": "SSH_SECURE",
+    "event_type": "auth_login",
+    "severity": 18,
+    "window_seconds": 1800,
+    "cooldown_seconds": 3600,
+    "version": 2,
+    "group_by": ["username"],
+    "tags": ["global", "auth", "credential_reuse", "MULTI-002"],
+    "match": {
+      "username": { "exists": true }
+    },
+    "condition": "fail_count >= 3 and success_count >= 1 and unique_servers >= 2",
+    "evidence": { "last_n": 40, "include_raw": true },
+    "emit": { "code": "MULTI-002" },
+    "let": {}
+  },
+  {
+  "name": "MULTI-003 | Same ASN flooding multiple servers",
+  "description": "Un ASN sospechoso genera alto volumen HTTP en varios servidores dentro de una ventana corta.",
+  "enabled": true,
+  "source": "APACHE_ACCESS",
+  "event_type": "http_access",
+  "severity": 18,
+  "window_seconds": 120,
+  "cooldown_seconds": 900,
+  "version": 1,
+  "group_by": ["extra.asn.number"],
+  "tags": ["global", "web", "dos", "asn", "MULTI-003"],
+  "match": {
+    "ip_client": { "exists": true },
+    "extra.asn.number": { "in_ref": "suspicious_asn_numbers" }
+  },
+  "condition": "count >= 1500 and unique_servers >= 3 and unique_ips >= 60",
+  "evidence": { "last_n": 50, "include_raw": true },
+  "emit": { "code": "MULTI-003" },
+  "let": {}
+  },
+
+  {
+    "name": "LFD-001 | Burst de bloqueos LFD (por IP)",
+    "description": "Una IP genera muchos eventos LFD bloqueados en una ventana corta (indicador de scanner/bruteforce).",
+    "enabled": true,
+    "source": "LFD",
+    "event_type": "security_signal",
+    "severity": 6,
+    "window_seconds": 300,
+    "cooldown_seconds": 900,
+    "version": 1,
+    "group_by": ["server", "ip_client"],
+    "tags": ["lfd", "blocked", "burst", "LFD-001"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.kind": { "eq": "lfd" },
+      "extra.action": { "eq": "blocked" }
+    },
+    "condition": "count >= 12",
+    "evidence": { "last_n": 20, "include_raw": true },
+    "emit": { "code": "LFD-001" },
+    "let": {}
+  },
+
+  {
+    "name": "LFD-002 | Bloqueos LFD desde subnet /24 (por server+subnet)",
+    "description": "Muchas IPs distintas del mismo /24 generan bloqueos LFD en poco tiempo (campaña por rango).",
+    "enabled": true,
+    "source": "LFD",
+    "event_type": "security_signal",
+    "severity": 12,
+    "window_seconds": 300,
+    "cooldown_seconds": 1800,
+    "version": 1,
+    "group_by": ["server", "ip_subnet24"],
+    "tags": ["lfd", "blocked", "subnet24", "range", "LFD-002"],
+    "match": {
+      "ip_client": { "exists": true },
+      "ip_subnet24": { "exists": true },
+      "extra.kind": { "eq": "lfd" },
+      "extra.action": { "eq": "blocked" }
+    },
+    "condition": "count >= 40 and unique_ips >= 10",
+    "evidence": { "last_n": 30, "include_raw": true },
+    "emit": { "code": "LFD-002" },
+    "let": {}
+  },
+
+  {
+    "name": "LFD-003 | Bloqueos LFD concentrados por ASN (por server+asn)",
+    "description": "Un ASN genera muchos bloqueos LFD hacia un servidor en ventana corta. Útil para campañas desde hosting/scanners.",
+    "enabled": true,
+    "source": "LFD",
+    "event_type": "security_signal",
+    "severity": 15,
+    "window_seconds": 600,
+    "cooldown_seconds": 3600,
+    "version": 1,
+    "group_by": ["server", "extra.asn.number"],
+    "tags": ["lfd", "blocked", "asn", "campaign", "LFD-003"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.asn.number": { "exists": true },
+      "extra.kind": { "eq": "lfd" },
+      "extra.action": { "eq": "blocked" }
+    },
+    "condition": "count >= 120 and unique_ips >= 25",
+    "evidence": { "last_n": 40, "include_raw": true },
+    "emit": { "code": "LFD-003" },
+    "let": {}
+  },
+
+  {
+    "name": "LFD-004 | Bloqueos LFD por país (por server+country)",
+    "description": "Muchos bloqueos LFD desde el mismo país (requiere geo enrichment). Señal de ataque regional.",
+    "enabled": true,
+    "source": "LFD",
+    "event_type": "security_signal",
+    "severity": 15,
+    "window_seconds": 600,
+    "cooldown_seconds": 3600,
+    "version": 1,
+    "group_by": ["server", "extra.geo.country_code"],
+    "tags": ["lfd", "blocked", "geo", "country", "LFD-004"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.geo.country_code": { "exists": true },
+      "extra.kind": { "eq": "lfd" },
+      "extra.action": { "eq": "blocked" }
+    },
+    "condition": "count >= 160 and unique_ips >= 35",
+    "evidence": { "last_n": 40, "include_raw": true },
+    "emit": { "code": "LFD-004" },
+    "let": {}
+  },
+
+  {
+    "name": "LFD-005 | Campaña LFD cross-server por ASN (global)",
+    "description": "Un ASN dispara bloqueos LFD en múltiples servidores dentro de ventana corta (campaña distribuida).",
+    "enabled": true,
+    "source": "LFD",
+    "event_type": "security_signal",
+    "severity": 18,
+    "window_seconds": 600,
+    "cooldown_seconds": 3600,
+    "version": 1,
+    "group_by": ["extra.asn.number"],
+    "tags": ["lfd", "blocked", "asn", "multi_host", "campaign", "LFD-005"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.asn.number": { "exists": true },
+      "extra.kind": { "eq": "lfd" },
+      "extra.action": { "eq": "blocked" }
+    },
+    "condition": "count >= 250 and unique_servers >= 3 and unique_ips >= 60",
+    "evidence": { "last_n": 60, "include_raw": true },
+    "emit": { "code": "LFD-005" },
+    "let": {}
+  },
+
+  {
+    "name": "LFD-006 | Campaña LFD cross-server por país (global)",
+    "description": "Un country_code origina muchos bloqueos LFD en varios servidores (señal regional).",
+    "enabled": true,
+    "source": "LFD",
+    "event_type": "security_signal",
+    "severity": 18,
+    "window_seconds": 600,
+    "cooldown_seconds": 3600,
+    "version": 1,
+    "group_by": ["extra.geo.country_code"],
+    "tags": ["lfd", "blocked", "geo", "multi_host", "campaign", "LFD-006"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.geo.country_code": { "exists": true },
+      "extra.kind": { "eq": "lfd" },
+      "extra.action": { "eq": "blocked" }
+    },
+    "condition": "count >= 350 and unique_servers >= 3 and unique_ips >= 80",
+    "evidence": { "last_n": 60, "include_raw": true },
+    "emit": { "code": "LFD-006" },
+    "let": {}
+  },
+
+  {
+    "name": "LFD-007 | Bloqueos LFD por razón específica (xmlrpc) por IP",
+    "description": "Muchos bloqueos LFD por XMLRPC desde una IP (muy común en WP).",
+    "enabled": true,
+    "source": "LFD",
+    "event_type": "security_signal",
+    "severity": 8,
+    "window_seconds": 600,
+    "cooldown_seconds": 1800,
+    "version": 1,
+    "group_by": ["server", "ip_client"],
+    "tags": ["lfd", "blocked", "xmlrpc", "wordpress", "LFD-007"],
+    "match": {
+      "ip_client": { "exists": true },
+      "extra.kind": { "eq": "lfd" },
+      "extra.action": { "eq": "blocked" },
+      "extra.reason": { "contains": "xmlrpc" }
+    },
+    "condition": "count >= 6",
+    "evidence": { "last_n": 15, "include_raw": true },
+    "emit": { "code": "LFD-007" },
+    "let": {}
+  },
+
+  {
+    "name": "LFD-008 | Alto ratio blocked vs ignored (por server)",
+    "description": "Mucho volumen LFD y predominan bloqueos (señal de ataque real vs ruido).",
+    "enabled": true,
+    "source": "LFD",
+    "event_type": "security_signal",
+    "severity": 10,
+    "window_seconds": 600,
+    "cooldown_seconds": 1800,
+    "version": 1,
+    "group_by": ["server"],
+    "tags": ["lfd", "blocked", "volume", "server", "LFD-008"],
+    "match": {
+      "extra.kind": { "eq": "lfd" }
+    },
+    "condition": "count >= 400",
+    "evidence": { "last_n": 40, "include_raw": true },
+    "emit": {
+      "code": "LFD-008",
+      "notes": "Sugerencia: revisar top_subnet24/top_subnet24_hits en metrics y correlacionar con HTTP/SSH."
+    },
+    "let": {}
+  }
+]
+
+

@@ -1,0 +1,36 @@
+---
+export interface Props {
+  label: string;
+  value: string;
+  helper?: string;
+  /** clave para mapear contra el JSON, ej: "critical_threats" */
+  statKey?: string;
+}
+
+const { label, value, helper, statKey } = Astro.props;
+---
+
+<div
+  class="rounded-xl bg-white border border-[#E5E7EB] p-4 flex flex-col gap-1 shadow-sm"
+  data-stat-key={statKey || ""}
+>
+  <span
+    class="text-xs font-medium text-[#6B7280] uppercase tracking-wide"
+    data-stat-label
+  >
+    {label}
+  </span>
+
+  <span
+    class="text-2xl font-semibold text-[#111827]"
+    data-stat-value
+  >
+    {value}
+  </span>
+
+  {helper && (
+    <span class="text-xs text-[#9CA3AF]" data-stat-helper>
+      {helper}
+    </span>
+  )}
+</div>

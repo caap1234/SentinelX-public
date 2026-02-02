@@ -1,0 +1,238 @@
+---
+import LandingLayout from "../../layouts/LandingLayout.astro";
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000"
+---
+
+<LandingLayout>
+  <main class="min-h-screen bg-[#0F1216] text-[#D6D9DD]">
+    <div class="min-h-screen mx-auto flex w-full max-w-[1440px]">
+
+      <!-- COLUMNA IZQUIERDA (480 px) -->
+      <section
+        class="w-full lg:w-[480px] bg-[#1C2127] shadow-[0_0_20px_rgba(0,0,0,0.25)]
+               px-8 py-10 lg:px-[60px] lg:py-20 flex flex-col"
+      >
+        <!-- LOGO -->
+        <div class="flex items-center gap-3 mb-16">
+          <span class="h-9 w-1 bg-[#E67E22]"></span>
+          <span class="text-2xl font-bold tracking-tight text-[#E67E22]">
+            SentinelX SIEM
+          </span>
+        </div>
+
+        <!-- FORMULARIO -->
+        <div class="max-w-sm">
+          <p class="text-sm font-semibold text-[#D6D9DD] mb-4">
+            Acceso al sistema
+          </p>
+
+          <form class="space-y-4" data-login-form>
+            <!-- Correo -->
+            <div>
+              <input
+                type="email"
+                data-login-email
+                placeholder="Correo electrónico"
+                class="w-full h-11 rounded-lg bg-[#232A32] border border-[#2A3038]
+                       px-4 text-sm text-[#D6D9DD] placeholder:text-[#8A929A]
+                       focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+              />
+            </div>
+
+            <!-- Contraseña con ícono de ojo -->
+            <div class="relative">
+              <input
+                type="password"
+                data-login-password
+                placeholder="Contraseña"
+                class="w-full h-11 rounded-lg bg-[#232A32] border border-[#2A3038]
+                       px-4 pr-10 text-sm text-[#D6D9DD] placeholder:text-[#8A929A]
+                       focus:outline-none focus:ring-2 focus:ring-[#E67E22]/70 focus:border-transparent"
+              />
+
+              <button
+                type="button"
+                data-toggle-password-login
+                class="absolute right-3 top-3 flex h-5 w-5 items-center justify-center text-[#8A929A] hover:text-[#D6D9DD] transition-colors"
+              >
+                <img
+                  data-eye-icon
+                  src="/svg/eye.svg"
+                  alt="Mostrar/Ocultar contraseña"
+                  class="h-4 w-4 pointer-events-none"
+                />
+              </button>
+            </div>
+
+            <!-- Recordarme + Olvidé contraseña -->
+            <div class="mt-2 flex items-center justify-between text-sm">
+              <label class="inline-flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  data-login-remember
+                  class="h-4 w-4 rounded border-[#2A3038] bg-[#232A32]
+                         text-[#E67E22] accent-[#E67E22]"
+                />
+                <span class="text-[#8A929A]">Recuérdame</span>
+              </label>
+            </div>
+
+            <!-- Mensaje de error -->
+            <p
+              data-login-error
+              class="mt-2 text-xs text-[#F97373] hidden"
+            ></p>
+
+            <!-- Botón: ahora sí llama a la API -->
+            <button
+              type="submit"
+              data-login-button
+              class="mt-4 w-full h-11 rounded-full bg-[#E67E22] text-[#000000]
+                     text-sm font-semibold tracking-wide flex items-center justify-center
+                     hover:bg-[#D35400] transition-colors"
+            >
+              Iniciar Sesión
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- COLUMNA DERECHA (IMAGEN) -->
+      <section class="hidden lg:block flex-1">
+        <img
+          src="/login/login.png"
+          alt="Fondo SentinelX SIEM"
+          class="w-full h-full object-cover"
+          loading="lazy"
+        />
+      </section>
+    </div>
+    <footer class="h-10 bg-[#000000] flex items-center justify-center">
+      <p class="text-[11px] tracking-wide text-[#AEB4BC]">
+        © 2025 SentinelX SIEM · Plataforma de análisis de logs y seguridad.
+      </p>
+    </footer>
+  </main>
+
+  <script type="module" define:vars={{ API_BASE }}>
+
+    const form = document.querySelector("[data-login-form]");
+    const emailInput = document.querySelector("[data-login-email]");
+    const passwordInput = document.querySelector("[data-login-password]");
+    const btn = document.querySelector("[data-login-button]");
+    const errorLabel = document.querySelector("[data-login-error]");
+    const rememberInput = document.querySelector("[data-login-remember]");
+    const togglePwdBtn = document.querySelector("[data-toggle-password-login]");
+    const eyeIcon = togglePwdBtn?.querySelector("[data-eye-icon]");
+
+    function showError(msg) {
+      if (!errorLabel) return;
+      errorLabel.textContent = msg;
+      errorLabel.classList.remove("hidden");
+    }
+
+    function clearError() {
+      if (!errorLabel) return;
+      errorLabel.textContent = "";
+      errorLabel.classList.add("hidden");
+    }
+
+    function isStrongPassword(value) {
+      const lengthOK = value.length >= 12;
+      const hasUpper = /[A-Z]/.test(value);
+      const hasLower = /[a-z]/.test(value);
+      const hasSpecial = /[^A-Za-z0-9]/.test(value);
+      return lengthOK && hasUpper && hasLower && hasSpecial;
+    }
+
+    // Toggle mostrar/ocultar contraseña con SVG
+    if (togglePwdBtn && passwordInput && eyeIcon) {
+      let visible = false;
+      togglePwdBtn.addEventListener("click", () => {
+        visible = !visible;
+        passwordInput.type = visible ? "text" : "password";
+        eyeIcon.src = visible ? "/svg/eye-close.svg" : "/svg/eye.svg";
+      });
+    }
+
+    if (form && emailInput && passwordInput && btn) {
+      form.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        clearError();
+
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!email || !password) {
+          showError("Ingresa tu correo y contraseña.");
+          return;
+        }
+
+        if (!isStrongPassword(password)) {
+          showError(
+            "La contraseña debe tener al menos 12 caracteres, e incluir mayúsculas, minúsculas y un carácter especial."
+          );
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Verificando...";
+
+        try {
+          const body = new URLSearchParams();
+          body.append("username", email);
+          body.append("password", password);
+
+          const res = await fetch(`${API_BASE}/auth/login`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              Accept: "application/json",
+            },
+            body,
+          });
+
+          if (!res.ok) {
+            if (res.status === 401) {
+              showError("Credenciales incorrectas. Verifica tu correo y contraseña.");
+            } else {
+              showError("No se pudo iniciar sesión. Inténtalo más tarde.");
+            }
+            return;
+          }
+
+          const data = await res.json();
+          const token = data.access_token;
+
+          if (!token) {
+            showError("Respuesta inválida de la API (sin token).");
+            return;
+          }
+
+          // Guardar token según "Recuérdame"
+          if (rememberInput && rememberInput.checked) {
+            // Persistente entre sesiones
+            localStorage.setItem("sentinelx_token", token);
+            sessionStorage.removeItem("sentinelx_token");
+          } else {
+            // Solo mientras el navegador esté abierto
+            sessionStorage.setItem("sentinelx_token", token);
+            localStorage.removeItem("sentinelx_token");
+          }
+
+          // Redirigir al dashboard
+          window.location.href = "/dashboard";
+
+          // Redirigir al dashboard
+          window.location.href = "/dashboard";
+        } catch (err) {
+          console.error(err);
+          showError("Error de conexión con la API.");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Iniciar Sesión";
+        }
+      });
+    }
+  </script>
+</LandingLayout>

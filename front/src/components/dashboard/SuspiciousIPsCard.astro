@@ -1,0 +1,190 @@
+---
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000"
+---
+
+<div class="rounded-xl bg-white border border-[#E5E7EB] p-6 shadow-sm flex flex-col">
+  <!-- TÍTULO CENTRADO -->
+  <div class="text-center mb-6">
+    <h2 class="text-sm font-semibold text-[#111827]">
+      Entidades en riesgo
+    </h2>
+    <p class="text-xs text-[#6B7280] mt-1">
+      Top entidades (IP) por score actual
+    </p>
+  </div>
+
+  <!-- TABLA DE 3 COLUMNAS -->
+  <div class="w-full">
+    <div
+      class="grid grid-cols-3 text-xs text-[#4B5563] font-medium border-b border-[#E5E7EB] pb-2"
+    >
+      <div class="text-center">Entidad</div>
+      <div class="text-center">Última vista</div>
+      <div class="text-center">Score</div>
+    </div>
+
+    <div class="divide-y divide-[#F3F4F6]" data-suspicious-list>
+      <!-- Filas desde JSON -->
+    </div>
+  </div>
+
+  <script type="module" define:vars={{ API_BASE }}>
+    const container = document.querySelector("[data-suspicious-list]");
+
+    // @ts-ignore
+    const TOKEN = window.SENTINELX_TOKEN || null;
+
+    /**
+     * @param {{server:string; dateRange:string; severity:string; rangeFrom?:string|null; rangeTo?:string|null}} filters
+     */
+    function buildQueryParams(filters) {
+      const params = new URLSearchParams();
+      params.set("entity_type", "ip");
+      params.set("limit", "4");
+      return params;
+    }
+
+    function getInitialFilters() {
+      // @ts-ignore
+      return (
+        window.SENTINELX_CURRENT_FILTERS || {
+          server: "all",
+          dateRange: "7d",
+          severity: "all",
+          rangeFrom: null,
+          rangeTo: null,
+        }
+      );
+    }
+
+    /**
+     * Renderiza la tabla de IPs sospechosas
+     * @param {{ip:string; risk_score:number; total_events:number; high_severity_events:number;}[]} items
+     */
+    function fmtDate(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return String(iso);
+      return d.toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
+    }
+
+    // Badge color score
+    const SCORE_BADGE_CLASSES = {
+      low: "bg-[#E5E7EB] text-[#374151]",     // 0-29
+      medium: "bg-[#FEF3C7] text-[#92400E]",  // 30-59
+      high: "bg-[#FEE2E2] text-[#B91C1C]",    // 60-79
+      critical: "bg-[#FCE7F3] text-[#9D174D]" // 80-100
+    };
+
+    const scoreLevel = (score) => {
+      const s = Number(score || 0);
+      if (s >= 80) return "critical";
+      if (s >= 60) return "high";
+      if (s >= 30) return "medium";
+      return "low";
+    };
+
+    const SCORE_LABEL = {
+      critical: "Crítica",
+      high: "Alta",
+      medium: "Media",
+      low: "Baja",
+    };
+
+    function renderIPs(items) {
+      if (!container) return;
+      container.innerHTML = "";
+
+      if (!Array.isArray(items) || items.length === 0) {
+        const row = document.createElement("div");
+        row.className = "py-4 text-center text-[11px] text-[#9CA3AF]";
+        row.textContent = "Sin Entidades sospechosas en este periodo.";
+        container.append(row);
+        return;
+      }
+
+      // Items vienen de entities/top -> esperamos EntityItem: { entity_key, score_current, last_seen_at, ... }
+      const mapped = items.map((it) => {
+        const key = String(it.entity_key || it.key || it.ip || "—");
+        const score = Number(it.score_current ?? it.score ?? 0);
+        const lastSeen = fmtDate(it.last_seen_at || it.lastSeen || null);
+        const lvl = scoreLevel(score);
+
+        return { key, score, lastSeen, lvl };
+      });
+
+      const sorted = mapped
+        .slice()
+        .sort((a, b) => (b.score - a.score))
+        .slice(0, 4);
+
+      sorted.forEach((rowObj) => {
+        const row = document.createElement("div");
+        row.className = "grid grid-cols-3 py-4 text-center items-center";
+
+        const ipCell = document.createElement("div");
+        ipCell.className = "text-[11px] text-[#4B5563] font-medium";
+        ipCell.textContent = rowObj.key;
+
+        const lastCell = document.createElement("div");
+        lastCell.className = "text-[11px] text-[#6B7280]";
+        lastCell.textContent = rowObj.lastSeen;
+
+        const scoreCell = document.createElement("div");
+        scoreCell.className = "flex flex-col items-center justify-center gap-1";
+
+        const sev = document.createElement("span");
+        sev.className = "text-[10px] text-[#6B7280]";
+        sev.textContent = SCORE_LABEL[rowObj.lvl] || "Baja";
+
+        const badge = document.createElement("span");
+        badge.className =
+          "inline-flex items-center justify-center px-3 py-0.5 rounded-full text-[10px] font-medium " +
+          (SCORE_BADGE_CLASSES[rowObj.lvl] || SCORE_BADGE_CLASSES.low);
+        badge.textContent = `${rowObj.score}/100`;
+
+        scoreCell.append(sev, badge);
+
+        row.append(ipCell, lastCell, scoreCell);
+        container.append(row);
+      });
+    }
+
+
+    async function loadSuspiciousIPs(filters) {
+      if (!container) return;
+
+      const params = buildQueryParams(filters);
+
+      try {
+        const res = await fetch(`${API_BASE}/dashboard/entities/top?${params.toString()}`, {
+          headers: TOKEN
+            ? { Authorization: `Bearer ${TOKEN}`, Accept: "application/json" }
+            : { Accept: "application/json" },
+        });
+
+        if (!res.ok) {
+          console.error("Error cargando /dashboard/entities/top:", await res.text());
+          renderIPs([]);
+          return;
+        }
+
+        const data = await res.json();
+        renderIPs(data.items || []);
+      } catch (err) {
+        console.error("Error llamando /dashboard/entities/top:", err);
+        renderIPs([]);
+      }
+    }
+
+    // carga inicial
+    loadSuspiciousIPs(getInitialFilters());
+
+    // escuchar cambios de filtros
+    window.addEventListener("sentinelx:filters-changed", (ev) => {
+      // @ts-ignore
+      const filters = ev.detail;
+      loadSuspiciousIPs(filters);
+    });
+  </script>
+</div>

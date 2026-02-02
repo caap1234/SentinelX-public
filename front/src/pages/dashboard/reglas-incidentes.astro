@@ -1,0 +1,624 @@
+---
+import DashboardLayout from "../../layouts/DashboardLayout.astro";
+import HeaderBar from "../../components/dashboard/HeaderBar.astro";
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || "http://127.0.0.1:8000";
+---
+
+<DashboardLayout pageTitle="SentinelX SIEM – Reglas de Incidentes">
+  <HeaderBar
+    title="Reglas de incidentes"
+    subtitle="Crea, edita y administra reglas que correlacionan INCIDENTES desde ALERTAS."
+    showFilters={false}
+  />
+
+  <section class="flex-1 px-8 py-6 space-y-6">
+    <div class="rounded-xl bg-white border border-[#E5E7EB] shadow-sm overflow-hidden">
+      <div class="px-8 py-4 border-b border-[#E5E7EB]">
+        <h2 class="text-[13px] font-semibold text-center text-[#111827]">Incident Rules</h2>
+      </div>
+
+      <div class="px-8 py-5">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+          <p class="text-[12px] text-[#6B7280] max-w-2xl leading-5">
+            Estas reglas generan incidentes a partir de <span class="font-medium">alertas</span>.
+            Configura match/group_by/window/condition y entidad principal.
+          </p>
+
+          <div class="flex items-center gap-3 justify-end shrink-0">
+            <div class="text-[12px] text-[#6B7280]" id="rulesStatus"></div>
+            <button
+              type="button"
+              id="reloadBtn"
+              class="h-10 px-4 rounded-lg border border-[#E5E7EB] bg-white text-[12px] font-semibold hover:bg-[#F9FAFB] transition-colors"
+            >
+              Recargar
+            </button>
+            <button
+              type="button"
+              id="openCreateBtn"
+              class="h-10 px-5 rounded-lg bg-[#F97316] text-white text-[12px] font-semibold hover:bg-[#EA580C] transition-colors"
+            >
+              Nueva regla
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full text-left text-[12px]">
+            <thead>
+              <tr class="border-b border-[#E5E7EB] text-[#6B7280]">
+                <th class="py-3 pr-4">ID</th>
+                <th class="py-3 pr-4">Code</th>
+                <th class="py-3 pr-4">Nombre</th>
+                <th class="py-3 pr-4">Scope</th>
+                <th class="py-3 pr-4">Window</th>
+                <th class="py-3 pr-4">Estado</th>
+                <th class="py-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr><td colspan="7" class="py-4 text-[#9CA3AF]">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL -->
+  <div id="modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40"></div>
+
+    <div class="relative w-full h-full flex items-center justify-center p-4">
+      <div class="w-full max-w-3xl rounded-xl bg-white border border-[#E5E7EB] shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-[#E5E7EB] flex items-start justify-between gap-3">
+          <div>
+            <h3 id="modalTitle" class="text-[13px] font-semibold text-[#111827]">Nueva regla</h3>
+            <p class="text-[11px] text-[#6B7280]">Campos JSON con validación.</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              id="validateJsonBtn"
+              class="h-9 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[11px] font-semibold hover:bg-[#F9FAFB] transition-colors"
+            >
+              Validar JSON
+            </button>
+            <button
+              type="button"
+              id="closeBtn"
+              class="h-9 w-9 rounded-lg border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB]"
+              aria-label="Cerrar"
+              title="Cerrar"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <div class="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Code</label>
+              <input id="fCode" type="text" placeholder="INC-WEB-001"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent" />
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="text-[11px] text-[#6B7280]">Nombre</label>
+              <input id="fName" type="text" placeholder="HTTP flood por IP"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Scope</label>
+              <select id="fScope"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent">
+                <option value="local">local</option>
+                <option value="global">global</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Window (seg)</label>
+              <input id="fWindow" type="number" min="1" value="1800"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent" />
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Cooldown (seg)</label>
+              <input id="fCooldown" type="number" min="0" value="3600"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Primary entity type</label>
+              <select id="fPrimaryType"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent">
+                <option value="ip">ip</option>
+                <option value="user">user</option>
+                <option value="host">host</option>
+                <option value="asn">asn</option>
+                <option value="country">country</option>
+                <option value="subnet24">subnet24</option>
+                <option value="server">server</option>
+                <option value="domain">domain</option>
+              </select>
+            </div>
+
+            <div class="md:col-span-2">
+              <label class="text-[11px] text-[#6B7280]">Primary entity field (en evidence)</label>
+              <input id="fPrimaryField" type="text" placeholder="ip_client"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent" />
+              <p class="mt-1 text-[11px] text-[#9CA3AF]">Ej: ip_client, username, extra.vhost (si lo guardas en evidence).</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="text-[11px] text-[#6B7280]">match (JSON)</label>
+              <textarea id="fMatch" rows="6"
+                class="mt-1 w-full rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 py-2 text-[13px] text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent">{}</textarea>
+              <p id="errMatch" class="mt-1 text-[11px] text-[#DC2626] hidden"></p>
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">group_by (JSON array)</label>
+              <textarea id="fGroupBy" rows="6"
+                class="mt-1 w-full rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 py-2 text-[13px] text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent">["server"]</textarea>
+              <p id="errGroupBy" class="mt-1 text-[11px] text-[#DC2626] hidden"></p>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[11px] text-[#6B7280]">condition (expr segura)</label>
+            <textarea id="fCondition" rows="4"
+              class="mt-1 w-full rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 py-2 text-[13px] text-[#111827]
+                     focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent">count >= 1</textarea>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="text-[11px] text-[#6B7280]">tags (JSON array)</label>
+              <textarea id="fTags" rows="3"
+                class="mt-1 w-full rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 py-2 text-[13px] text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent">[]</textarea>
+              <p id="errTags" class="mt-1 text-[11px] text-[#DC2626] hidden"></p>
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">meta (JSON)</label>
+              <textarea id="fMeta" rows="3"
+                class="mt-1 w-full rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 py-2 text-[13px] text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent">{}</textarea>
+              <p id="errMeta" class="mt-1 text-[11px] text-[#DC2626] hidden"></p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label class="text-[11px] text-[#6B7280]">Enabled</label>
+              <select id="fEnabled"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent">
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">severity_base</label>
+              <input id="fSeverityBase" type="number" min="0" max="100" value="10"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent" />
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[#6B7280]">score_bonus</label>
+              <input id="fScoreBonus" type="number" min="-100" max="100" value="0"
+                class="mt-1 w-full h-10 rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 text-[13px] text-[#111827]
+                       focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent" />
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[11px] text-[#6B7280]">Descripción</label>
+            <textarea id="fDescription" rows="3"
+              class="mt-1 w-full rounded-lg border border-[#E5E7EB] bg-[#F3F4F6] px-3 py-2 text-[13px] text-[#111827]
+                     focus:outline-none focus:ring-2 focus:ring-[#F97316]/60 focus:border-transparent"></textarea>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-[#E5E7EB] flex items-center justify-between gap-3">
+          <span id="modalStatus" class="text-[12px] text-[#6B7280]"></span>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              id="deleteBtn"
+              class="hidden h-10 px-4 rounded-lg bg-[#FEE2E2] text-[#B91C1C] text-[12px] font-semibold hover:bg-[#FECACA] transition-colors"
+            >
+              Eliminar
+            </button>
+            <button
+              type="button"
+              id="saveBtn"
+              class="h-10 px-6 rounded-lg bg-[#F97316] text-white text-[12px] font-semibold hover:bg-[#EA580C] transition-colors"
+            >
+              Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" define:vars={{ API_BASE }}>
+    const token = localStorage.getItem("sentinelx_token") || sessionStorage.getItem("sentinelx_token");
+    if (!token) window.location.href = "/login";
+
+    const authHeaders = () => ({
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    });
+
+    const handleAuthErrors = async (res) => {
+      if (res.status === 401) {
+        localStorage.removeItem("sentinelx_token");
+        sessionStorage.removeItem("sentinelx_token");
+        window.location.href = "/login";
+        return true;
+      }
+      return false;
+    };
+
+    const tbody = document.getElementById("tbody");
+    const rulesStatus = document.getElementById("rulesStatus");
+    const reloadBtn = document.getElementById("reloadBtn");
+    const openCreateBtn = document.getElementById("openCreateBtn");
+
+    const modal = document.getElementById("modal");
+    const modalTitle = document.getElementById("modalTitle");
+    const closeBtn = document.getElementById("closeBtn");
+    const validateJsonBtn = document.getElementById("validateJsonBtn");
+    const saveBtn = document.getElementById("saveBtn");
+    const deleteBtn = document.getElementById("deleteBtn");
+    const modalStatus = document.getElementById("modalStatus");
+
+    const fCode = document.getElementById("fCode");
+    const fName = document.getElementById("fName");
+    const fScope = document.getElementById("fScope");
+    const fWindow = document.getElementById("fWindow");
+    const fCooldown = document.getElementById("fCooldown");
+    const fPrimaryType = document.getElementById("fPrimaryType");
+    const fPrimaryField = document.getElementById("fPrimaryField");
+    const fMatch = document.getElementById("fMatch");
+    const fGroupBy = document.getElementById("fGroupBy");
+    const fCondition = document.getElementById("fCondition");
+    const fTags = document.getElementById("fTags");
+    const fMeta = document.getElementById("fMeta");
+    const fEnabled = document.getElementById("fEnabled");
+    const fSeverityBase = document.getElementById("fSeverityBase");
+    const fScoreBonus = document.getElementById("fScoreBonus");
+    const fDescription = document.getElementById("fDescription");
+
+    const errMatch = document.getElementById("errMatch");
+    const errGroupBy = document.getElementById("errGroupBy");
+    const errTags = document.getElementById("errTags");
+    const errMeta = document.getElementById("errMeta");
+
+    let editingId = null;
+    let RULES = [];
+
+    const showModal = () => { modal?.classList.remove("hidden"); document.body.style.overflow = "hidden"; };
+    const hideModal = () => {
+      modal?.classList.add("hidden");
+      document.body.style.overflow = "";
+      editingId = null;
+      deleteBtn?.classList.add("hidden");
+      if (modalStatus) modalStatus.textContent = "";
+      clearJsonErrors();
+    };
+
+    modal?.addEventListener("click", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      if (t === modal || t.classList.contains("bg-black/40")) hideModal();
+    });
+    closeBtn?.addEventListener("click", hideModal);
+
+    function clearJsonErrors() {
+      [[fMatch, errMatch],[fGroupBy, errGroupBy],[fTags, errTags],[fMeta, errMeta]].forEach(([field, err]) => {
+        if (err) { err.textContent = ""; err.classList.add("hidden"); }
+        if (field) { field.classList.remove("border-[#DC2626]","ring-2","ring-[#DC2626]/40"); field.classList.add("border-[#E5E7EB]"); }
+      });
+    }
+
+    function markJsonError(field, errEl, msg) {
+      if (errEl) { errEl.textContent = msg; errEl.classList.remove("hidden"); }
+      if (field) { field.classList.remove("border-[#E5E7EB]"); field.classList.add("border-[#DC2626]","ring-2","ring-[#DC2626]/40"); }
+    }
+
+    function safeJsonParseStrict(text, kind) {
+      const s = String(text ?? "").trim();
+      if (!s) return kind === "array" ? [] : {};
+      const v = JSON.parse(s);
+      if (kind === "array" && !Array.isArray(v)) throw new Error("Debe ser un JSON array.");
+      if (kind === "object" && (v === null || Array.isArray(v) || typeof v !== "object")) throw new Error("Debe ser un JSON object.");
+      return v;
+    }
+
+    function validateJsonFields({ showOk = true } = {}) {
+      clearJsonErrors();
+      let ok = true;
+
+      try { safeJsonParseStrict(fMatch?.value, "object"); } catch (e) { ok = false; markJsonError(fMatch, errMatch, `match inválido: ${e.message}`); }
+      try { safeJsonParseStrict(fGroupBy?.value, "array"); } catch (e) { ok = false; markJsonError(fGroupBy, errGroupBy, `group_by inválido: ${e.message}`); }
+      try { safeJsonParseStrict(fTags?.value, "array"); } catch (e) { ok = false; markJsonError(fTags, errTags, `tags inválido: ${e.message}`); }
+      try { safeJsonParseStrict(fMeta?.value, "object"); } catch (e) { ok = false; markJsonError(fMeta, errMeta, `meta inválido: ${e.message}`); }
+
+      if (modalStatus) {
+        if (ok && showOk) modalStatus.textContent = "JSON OK.";
+        if (!ok) modalStatus.textContent = "Corrige los campos JSON marcados.";
+      }
+      return ok;
+    }
+
+    validateJsonBtn?.addEventListener("click", () => validateJsonFields({ showOk: true }));
+
+    function resetForm() {
+      fCode.value = "";
+      fName.value = "";
+      fScope.value = "local";
+      fWindow.value = "1800";
+      fCooldown.value = "3600";
+      fPrimaryType.value = "ip";
+      fPrimaryField.value = "ip_client";
+      fMatch.value = "{}";
+      fGroupBy.value = '["server"]';
+      fCondition.value = "count >= 1";
+      fTags.value = "[]";
+      fMeta.value = "{}";
+      fEnabled.value = "true";
+      fSeverityBase.value = "10";
+      fScoreBonus.value = "0";
+      fDescription.value = "";
+      clearJsonErrors();
+    }
+
+    function fillForm(r) {
+      fCode.value = r.code || "";
+      fName.value = r.name || "";
+      fScope.value = r.scope || "local";
+      fWindow.value = String(r.window_seconds ?? 1800);
+      fCooldown.value = String(r.cooldown_seconds ?? 3600);
+      fPrimaryType.value = r.primary_entity_type || "ip";
+      fPrimaryField.value = r.primary_entity_field || "";
+      fMatch.value = JSON.stringify(r.match ?? {}, null, 2);
+      fGroupBy.value = JSON.stringify(r.group_by ?? [], null, 2);
+      fCondition.value = r.condition ?? "";
+      fTags.value = JSON.stringify(r.tags ?? [], null, 2);
+      fMeta.value = JSON.stringify(r.meta ?? {}, null, 2);
+      fEnabled.value = String(!!r.enabled);
+      fSeverityBase.value = String(r.severity_base ?? 10);
+      fScoreBonus.value = String(r.score_bonus ?? 0);
+      fDescription.value = r.description || "";
+      clearJsonErrors();
+    }
+
+    async function fetchRules() {
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-[#9CA3AF]">Cargando…</td></tr>';
+
+      try {
+        const res = await fetch(`${API_BASE}/incident-rules`, { headers: authHeaders() });
+        if (await handleAuthErrors(res)) return;
+
+        if (res.status === 403) {
+          tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-[#DC2626]">Acceso denegado. Solo Admin.</td></tr>';
+          if (rulesStatus) rulesStatus.textContent = "";
+          return;
+        }
+
+        if (!res.ok) throw new Error(await res.text());
+        RULES = await res.json();
+
+        if (rulesStatus) rulesStatus.textContent = `${RULES.length} reglas`;
+
+        if (!RULES.length) {
+          tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-[#9CA3AF]">Sin reglas.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = "";
+        RULES.forEach((r) => {
+          const tr = document.createElement("tr");
+          tr.className = "border-b border-[#E5E7EB] last:border-b-0";
+
+          const state = r.enabled ? "Habilitada" : "Deshabilitada";
+          const stateCls = r.enabled ? "text-[#065F46] bg-[#D1FAE5]" : "text-[#374151] bg-[#E5E7EB]";
+
+          tr.innerHTML = `
+            <td class="py-3 pr-4 text-[#111827]">${r.id}</td>
+            <td class="py-3 pr-4 text-[#111827]">${r.code || "-"}</td>
+            <td class="py-3 pr-4 text-[#111827]">${r.name || "-"}</td>
+            <td class="py-3 pr-4 text-[#111827]">${r.scope || "-"}</td>
+            <td class="py-3 pr-4 text-[#111827]">${r.window_seconds ?? "-"}</td>
+            <td class="py-3 pr-4">
+              <span class="inline-flex items-center h-7 px-3 rounded-full text-[11px] font-medium ${stateCls}">${state}</span>
+            </td>
+            <td class="py-3 text-right">
+              <div class="flex gap-2 justify-end">
+                <button data-action="toggle" data-id="${r.id}" data-enabled="${r.enabled}"
+                  class="h-8 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[11px] hover:bg-[#F9FAFB]">
+                  ${r.enabled ? "Desactivar" : "Activar"}
+                </button>
+                <button data-action="edit" data-id="${r.id}"
+                  class="h-8 px-3 rounded-lg border border-[#E5E7EB] bg-white text-[11px] hover:bg-[#F9FAFB]">
+                  Editar
+                </button>
+                <button data-action="delete" data-id="${r.id}"
+                  class="h-8 w-8 flex items-center justify-center rounded-lg border border-[#E5E7EB] bg-white hover:bg-[#FEF2F2]"
+                  title="Eliminar" aria-label="Eliminar">
+                  <img src="/svg/trash.svg" class="h-4 w-4" alt="Eliminar" loading="lazy" />
+                </button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        console.error(e);
+        tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-[#DC2626]">Error al cargar.</td></tr>';
+      }
+    }
+
+    reloadBtn?.addEventListener("click", fetchRules);
+
+    openCreateBtn?.addEventListener("click", () => {
+      editingId = null;
+      resetForm();
+      if (modalTitle) modalTitle.textContent = "Nueva regla";
+      deleteBtn?.classList.add("hidden");
+      showModal();
+    });
+
+    tbody?.addEventListener("click", async (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      const btn = t.closest("button");
+      if (!btn) return;
+
+      const action = btn.getAttribute("data-action");
+      const id = btn.getAttribute("data-id");
+      if (!action || !id) return;
+
+      try {
+        if (action === "toggle") {
+          const enabled = btn.getAttribute("data-enabled") === "true";
+          const endpoint = enabled ? "disable" : "enable";
+          const res = await fetch(`${API_BASE}/incident-rules/${id}/${endpoint}`, { method: "POST", headers: authHeaders() });
+          if (await handleAuthErrors(res)) return;
+          if (res.status === 403) return alert("Acceso denegado. Solo Admin.");
+          if (!res.ok) throw new Error(await res.text());
+          await fetchRules();
+          return;
+        }
+
+        if (action === "edit") {
+          const res = await fetch(`${API_BASE}/incident-rules/${id}`, { headers: authHeaders() });
+          if (await handleAuthErrors(res)) return;
+          if (res.status === 403) return alert("Acceso denegado. Solo Admin.");
+          if (!res.ok) throw new Error(await res.text());
+          const rule = await res.json();
+
+          editingId = rule.id;
+          if (modalTitle) modalTitle.textContent = `Editar regla #${rule.id}`;
+          deleteBtn?.classList.remove("hidden");
+          fillForm(rule);
+          showModal();
+          return;
+        }
+
+        if (action === "delete") {
+          if (!confirm("¿Eliminar esta regla?")) return;
+          const res = await fetch(`${API_BASE}/incident-rules/${id}`, { method: "DELETE", headers: authHeaders() });
+          if (await handleAuthErrors(res)) return;
+          if (res.status === 403) return alert("Acceso denegado. Solo Admin.");
+          if (!res.ok) throw new Error(await res.text());
+          await fetchRules();
+          return;
+        }
+      } catch (err) {
+        console.error(err);
+        alert("No se pudo completar la acción.");
+      }
+    });
+
+    deleteBtn?.addEventListener("click", async () => {
+      if (!editingId) return;
+      try {
+        if (!confirm(`¿Eliminar la regla #${editingId}?`)) return;
+        if (modalStatus) modalStatus.textContent = "Eliminando…";
+
+        const res = await fetch(`${API_BASE}/incident-rules/${editingId}`, { method: "DELETE", headers: authHeaders() });
+        if (await handleAuthErrors(res)) return;
+        if (res.status === 403) return alert("Acceso denegado. Solo Admin.");
+        if (!res.ok) throw new Error(await res.text());
+
+        if (modalStatus) modalStatus.textContent = "Eliminada.";
+        hideModal();
+        await fetchRules();
+      } catch (e) {
+        console.error(e);
+        if (modalStatus) modalStatus.textContent = "Error.";
+        alert("No se pudo eliminar.");
+      }
+    });
+
+    saveBtn?.addEventListener("click", async () => {
+      try {
+        if (!validateJsonFields({ showOk: false })) return;
+        if (modalStatus) modalStatus.textContent = "Guardando…";
+
+        const payload = {
+          code: (fCode.value || "").trim().toUpperCase(),
+          name: (fName.value || "").trim(),
+          enabled: (fEnabled.value || "true") === "true",
+          scope: (fScope.value || "local").trim(),
+          window_seconds: Number(fWindow.value || 1800) || 1800,
+          cooldown_seconds: Number(fCooldown.value || 3600) || 3600,
+          primary_entity_type: (fPrimaryType.value || "ip").trim(),
+          primary_entity_field: (fPrimaryField.value || "").trim(),
+          match: safeJsonParseStrict(fMatch.value, "object"),
+          group_by: safeJsonParseStrict(fGroupBy.value, "array"),
+          condition: (fCondition.value || "").trim(),
+          tags: safeJsonParseStrict(fTags.value, "array"),
+          meta: safeJsonParseStrict(fMeta.value, "object"),
+          severity_base: Number(fSeverityBase.value || 10) || 10,
+          score_bonus: Number(fScoreBonus.value || 0) || 0,
+          description: (fDescription.value || "").trim() || null,
+        };
+
+        if (!payload.code || !payload.name || !payload.primary_entity_field) {
+          if (modalStatus) modalStatus.textContent = "code, name y primary_entity_field son requeridos.";
+          return;
+        }
+
+        const isEdit = !!editingId;
+        const url = isEdit ? `${API_BASE}/incident-rules/${editingId}` : `${API_BASE}/incident-rules`;
+        const method = isEdit ? "PATCH" : "POST";
+
+        const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(payload) });
+        if (await handleAuthErrors(res)) return;
+        if (res.status === 403) return alert("Acceso denegado. Solo Admin.");
+        if (!res.ok) throw new Error(await res.text());
+
+        if (modalStatus) modalStatus.textContent = "Guardado.";
+        hideModal();
+        await fetchRules();
+      } catch (e) {
+        console.error(e);
+        if (modalStatus) modalStatus.textContent = "Error.";
+        alert("No se pudo guardar.");
+      }
+    });
+
+    await fetchRules();
+  </script>
+</DashboardLayout>

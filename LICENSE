@@ -1,0 +1,81 @@
+SentinelX License – Community Use License v1.0
+
+Copyright (c) 2026 Christian Aceves
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person or organization
+obtaining a copy of this software and associated documentation files
+(the “Software”), to use, copy, modify, and run the Software under the
+following conditions:
+
+────────────────────────────────────────────────────────────
+1. PERMITTED USES
+────────────────────────────────────────────────────────────
+
+You are permitted to use the Software for:
+
+- Personal use
+- Educational use
+- Research and laboratory environments
+- Internal use within a company or organization
+  (including internal security monitoring, SOC, or blue team operations)
+
+You may modify the Software for the above purposes.
+
+────────────────────────────────────────────────────────────
+2. RESTRICTED USES (COMMERCIAL / SaaS)
+────────────────────────────────────────────────────────────
+
+You may NOT:
+
+- Offer the Software, or a modified version of it, as a hosted service
+  (Software-as-a-Service, Managed Service, MSSP, SOC-as-a-Service, etc.)
+- Sell, license, sublicense, rent, lease, or monetize the Software
+- Provide paid access to the Software or its functionality
+- Use the Software as part of a commercial security service offered to third parties
+
+WITHOUT PRIOR WRITTEN PERMISSION from the copyright holder.
+
+If you wish to use SentinelX commercially or as a service, you must obtain
+a commercial license.
+
+Contact:
+  christianaceves@neubox.net
+
+────────────────────────────────────────────────────────────
+3. DISTRIBUTION
+────────────────────────────────────────────────────────────
+
+You may redistribute the Software only if:
+
+- This license file is included unmodified
+- The copyright notice is preserved
+- No additional restrictions are imposed
+
+────────────────────────────────────────────────────────────
+4. DISCLAIMER
+────────────────────────────────────────────────────────────
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+────────────────────────────────────────────────────────────
+5. TERMINATION
+────────────────────────────────────────────────────────────
+
+Any violation of the terms of this license automatically terminates
+your rights under this license.
+
+────────────────────────────────────────────────────────────
+6. FUTURE LICENSING
+────────────────────────────────────────────────────────────
+
+The author reserves the right to release SentinelX under different licenses
+in the future, including commercial or open-source licenses.
+

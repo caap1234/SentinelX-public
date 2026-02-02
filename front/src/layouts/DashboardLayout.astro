@@ -1,0 +1,41 @@
+---
+import "../styles/global.css";
+import Sidebar from "../components/dashboard/Sidebar.astro";
+
+export interface Props {
+  pageTitle?: string;
+}
+
+const { pageTitle = "SentinelX SIEM – Dashboard" } = Astro.props;
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>{pageTitle}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+
+  <body class="min-h-screen bg-[#0A0C0F] text-[#111827]">
+    <div class="min-h-screen flex">
+      <!-- Sidebar oscuro -->
+      <Sidebar />
+
+      <!-- Área principal clara -->
+      <div class="flex-1 flex flex-col bg-[#F4F5F7]">
+
+        <!-- Contenido de cada página -->
+        <main class="flex-1 flex flex-col">
+          <slot />
+        </main>
+
+        <!-- Footer inferior oscuro -->
+        <footer class="h-10 bg-[#000000] flex items-center justify-center">
+          <p class="text-[11px] tracking-wide text-[#AEB4BC]">
+            © 2025 SentinelX SIEM · Plataforma de análisis de logs y seguridad.
+          </p>
+        </footer>
+      </div>
+    </div>
+  </body>
+</html>

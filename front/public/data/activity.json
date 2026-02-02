@@ -1,0 +1,72 @@
+[
+  {
+    "label": "Lun",
+    "bruteForce": 12,
+    "bots": 5,
+    "exploits": 3,
+    "wpCoreErrors": 1,
+    "fileAnomalies": 0,
+    "mailThreats": 2,
+    "panelAccess": 1
+  },
+  {
+    "label": "Mar",
+    "bruteForce": 8,
+    "bots": 7,
+    "exploits": 4,
+    "wpCoreErrors": 0,
+    "fileAnomalies": 1,
+    "mailThreats": 1,
+    "panelAccess": 0
+  },
+  {
+    "label": "Mié",
+    "bruteForce": 15,
+    "bots": 6,
+    "exploits": 5,
+    "wpCoreErrors": 2,
+    "fileAnomalies": 1,
+    "mailThreats": 3,
+    "panelAccess": 1
+  },
+  {
+    "label": "Jue",
+    "bruteForce": 9,
+    "bots": 4,
+    "exploits": 2,
+    "wpCoreErrors": 1,
+    "fileAnomalies": 0,
+    "mailThreats": 1,
+    "panelAccess": 0
+  },
+  {
+    "label": "Vie",
+    "bruteForce": 20,
+    "bots": 10,
+    "exploits": 6,
+    "wpCoreErrors": 3,
+    "fileAnomalies": 2,
+    "mailThreats": 4,
+    "panelAccess": 2
+  },
+  {
+    "label": "Sáb",
+    "bruteForce": 11,
+    "bots": 5,
+    "exploits": 3,
+    "wpCoreErrors": 1,
+    "fileAnomalies": 1,
+    "mailThreats": 2,
+    "panelAccess": 1
+  },
+  {
+    "label": "Dom",
+    "bruteForce": 9,
+    "bots": 3,
+    "exploits": 5,
+    "wpCoreErrors": 1,
+    "fileAnomalies": 1,
+    "mailThreats": 2,
+    "panelAccess": 0
+  }
+]
