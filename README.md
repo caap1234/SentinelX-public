@@ -170,6 +170,13 @@ Consulta: agent/README.md.
 
 ## Licencia
 
+SentinelX is released under the **SentinelX Community Use License**.
+
+- Free for personal, educational, and internal company use
+- Commercial use or SaaS offerings require a paid license
+
+See the `LICENSE` file for full details.
+
 ---
 
 ## Contribuciones
